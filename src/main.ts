@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { BadRequestException, Logger, ValidationPipe } from '@nestjs/common';
+import { AdminService } from './domain/identity/services/admin.service';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
@@ -37,5 +38,16 @@ async function bootstrap() {
 
   await app.listen(port);
   Logger.log(`~ Application is running on: ${await app.getUrl()}`);
+
+  // Ensure root admin exists (run after app boot to avoid module init ordering issues)
+  try {
+    const adminService = app.get(AdminService);
+    if (adminService && typeof adminService.createRootAdminIfNotExists === 'function') {
+      await adminService.createRootAdminIfNotExists('admin@tradeexpertgrid.com', 'Password@123');
+      Logger.log('Root admin ensured');
+    }
+  } catch (err) {
+    Logger.error('Failed to ensure root admin', err as any);
+  }
 }
 bootstrap();

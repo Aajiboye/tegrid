@@ -9,34 +9,47 @@ export class HomeOwnerKycProfile {
   _id?: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'User' })
-  user: User;
+  user?: User;
 
   @Prop()
-  firstName: string;
+  firstName?: string;
 
   @Prop()
-  lastName: string;
+  lastName?: string;
 
   @Prop()
-  middleName: string;
+  middleName?: string;
 
   @Prop()
-  phoneNumber: string;
+  phoneNumber?: string;
 
   @Prop()
-  pinHash: string;
+  pinHash?: string;
 
   @Prop()
-  nin: string;
+  nin?: string;
 
   @Prop()
-  photoIdUrl: string;
+  photoIdUrl?: string;
 
   @Prop()
-  address: string;
+  address?: string;
 
   @Prop()
-  addressProofUrl: string;
+  addressProofUrl?: string;
+
+  // workflow fields
+  @Prop({ type: String, default: 'PENDING' })
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+
+  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+  approvedBy?: any;
+
+  @Prop({ type: Date, default: null })
+  approvedAt?: Date;
+
+  @Prop({ type: String, default: null })
+  rejectionReason?: string;
 }
 
 export const HomeOwnerKycProfileSchema = SchemaFactory.createForClass(HomeOwnerKycProfile);

@@ -16,9 +16,15 @@ import { PhoneUtilService } from 'src/shared/utils/phone.utils';
 import { HomeOwnerKycController } from './controllers/home-owner-kyc.controller';
 import { HomeOwnerKycService } from './services/home-owner-kyc.service';
 import { HomeOwnerKycRepository } from './repositories/homeowner-kyc.repo';
+import { AdminService } from './services/admin.service';
 import { HomeOwnerKycProfile, HomeOwnerKycProfileSchema } from './models/homeowner-kyc.model';
 import { PhoneNumberVerificationRepository } from './repositories/phone-verification.repo';
 import { PhoneNumberVerification, PhoneNumberVerificationSchema } from './models/phone-number-verifications.model';
+import { CryptoService } from 'src/shared/services/crypto.service';
+import { RoleGuard } from 'src/guards/role.guard';
+import { VerifyMeProvider } from './providers/verifyme.provider';
+import { IDENTITY_VERIFIER } from './providers/constants';
+import { AuditModule } from 'src/shared/audit.module';
 
 
 @Module({
@@ -28,9 +34,8 @@ import { PhoneNumberVerification, PhoneNumberVerificationSchema } from './models
       {name: Token.name, schema: TokenSchema},
       {name: HomeOwnerKycProfile.name, schema: HomeOwnerKycProfileSchema},
       {name: PhoneNumberVerification.name, schema: PhoneNumberVerificationSchema},
-
-
     ]),
+    AuditModule,
   ],
   providers: [
     TokenRepository,
@@ -44,7 +49,14 @@ import { PhoneNumberVerification, PhoneNumberVerificationSchema } from './models
     PhoneUtilService,
     HomeOwnerKycService,
     HomeOwnerKycRepository,
-    PhoneNumberVerificationRepository
+    PhoneNumberVerificationRepository,
+    CryptoService,
+    RoleGuard,
+    // pluggable identity verifier (bound to token)
+    {
+      provide: IDENTITY_VERIFIER,
+      useClass: VerifyMeProvider,
+    },
   ],
   controllers: [
     AuthController,
@@ -54,6 +66,8 @@ import { PhoneNumberVerification, PhoneNumberVerificationSchema } from './models
   exports: [
     UserRepository,
     TokenRepository,
+    HomeOwnerKycService,
+    HomeOwnerKycRepository,
   ],
 })
 export class UserModule {}

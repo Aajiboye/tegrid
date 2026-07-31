@@ -140,27 +140,27 @@ export class AuthService implements IAuth {
   ): Promise<VerifyEmailResponse> {
 
     const identifier = verifyEmailPayload.identifier;
-    let email = '';
-    let phone = '';
+    let emailNormalized = '';
+    let phoneNormalized = '';
     const query = {tokenType: 'ONBOARDING',
       otp: verifyEmailPayload.otp,
       expiresAt: { $gte: Date.now() },}
 
     if ((identifier || '').includes('@')) {
       query['userId'] = this.emailUtil.normalizeEmail(identifier);
-      email = this.emailUtil.normalizeEmail(identifier);
+      emailNormalized = this.emailUtil.normalizeEmail(identifier);
     } else {
       query['userId'] = this.phoneUtil.normalizePhone(identifier);
-      phone = this.phoneUtil.normalizePhone(identifier);
+      phoneNormalized = this.phoneUtil.normalizePhone(identifier);
     }
     const token = await this.tokenRepo.findOne(query);
 
     if (!token) throw new BadRequestException("OTP expired or doesn't exist");
 
-    const user = new User();
-    user.isVerified = true;
-    if(email) user.email = email;
-    if(phone) user.phoneNumber = phone;
+  const user = new User();
+  user.isVerified = true;
+  if(emailNormalized) user.email = emailNormalized;
+  if(phoneNormalized) user.phoneNumber = phoneNormalized;
     user.userType = UserType.HomeOwner;
     this.userRepo.save(user);
 

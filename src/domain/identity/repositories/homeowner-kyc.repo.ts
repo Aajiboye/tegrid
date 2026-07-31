@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Token } from '../models/token.model';
 import { HomeOwnerKycProfile } from '../models/homeowner-kyc.model';
 
 @Injectable()
@@ -34,5 +33,13 @@ export class HomeOwnerKycRepository {
   async save(payload: HomeOwnerKycProfile) {
     const newProfile = new this.model(payload);
     return newProfile.save();
+  }
+
+  async approveById(id: string, approverId: string) {
+    return this.model.findByIdAndUpdate(id, { status: 'APPROVED', approvedBy: approverId, approvedAt: new Date() }, { new: true });
+  }
+
+  async rejectById(id: string, approverId: string, reason: string) {
+    return this.model.findByIdAndUpdate(id, { status: 'REJECTED', approvedBy: approverId, approvedAt: new Date(), rejectionReason: reason }, { new: true });
   }
 }

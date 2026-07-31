@@ -6,7 +6,8 @@ export interface IHomeOwnerKyc {
    completeProfile(user:User, profileData:HomeOwnerProfileCreationDto): Promise<HomeOwnerProfileDto>;
    verifyPhoneNumber(user:User, phoneNumber:string, otp:string): Promise<void>;
    requestPhoneVerificationOtp(user:User, phoneNumber:string): Promise<void>;
-   completeIdentityVerification(user:User, nin:string, photoIdUrl:string): Promise<HomeOwnerProfileDto>; 
+   completeIdentityVerification(user:User, identityType:string, identityData:string, photoIdUrl?:string): Promise<HomeOwnerProfileDto>;
+   getDecryptedIdentityData(user:User, encryptionKey?:string): Promise<string | null>;
    completeAddressVerification(user:User, address:string, addressProofUrl:string): Promise<HomeOwnerProfileDto>;
    getKycProfile(user:User): Promise<HomeOwnerProfileDto>;
 }

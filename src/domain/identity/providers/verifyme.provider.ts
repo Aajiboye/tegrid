@@ -14,12 +14,12 @@ export class VerifyMeProvider implements IIdentityVerifier {
     this.apiKey = this.config.get<string>('VERIFYME_API_KEY');
   }
 
-  async verifyNin(nin: string): Promise<IdentityVerificationResult> {
+  async verifyIdentity(identityType: string, identityData: string): Promise<IdentityVerificationResult> {
     const appEnv = this.config.get<string>('APP_ENV') || this.config.get<string>('appEnv') || 'development';
 
-    // In development, skip external verification and accept the nin
+    // In development, skip external verification and accept the identity data
     if (appEnv === 'development') {
-      this.logger.log('Development environment detected — skipping external NIN verification');
+      this.logger.log('Development environment detected — skipping external identity verification');
       return { success: true, providerResponse: { message: 'dev-skip' } };
     }
 
@@ -31,8 +31,8 @@ export class VerifyMeProvider implements IIdentityVerifier {
 
     try {
       const resp = await axios.post(
-        `${this.baseUrl}/verify/nin`,
-        { nin },
+        `${this.baseUrl}/verify/identity`,
+        { type: identityType, value: identityData },
         {
           headers: this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : undefined,
           timeout: 10_000,
@@ -44,5 +44,10 @@ export class VerifyMeProvider implements IIdentityVerifier {
       this.logger.error('VerifyMeProvider verification failed', err?.message || err);
       return { success: false, providerResponse: err?.response?.data || { message: err?.message } };
     }
+  }
+
+  // backwards compatibility
+  async verifyNin(nin: string): Promise<IdentityVerificationResult> {
+    return this.verifyIdentity('NIN', nin);
   }
 }

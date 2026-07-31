@@ -56,8 +56,8 @@ export class HomeOwnerKycController {
     @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Complete Home Owner Identity Verification' })
     async completeIdentityVerification(@user() user: User, @Body() payload: HomeOwnerIdentityVerificationDto) {
-        const { nin, photoIdUrl } = payload;
-        const res = await this.homeOwnerKycService.completeIdentityVerification(user, nin, photoIdUrl);
+        const { identityType, identityData, photoIdUrl } = payload;
+        const res = await this.homeOwnerKycService.completeIdentityVerification(user, identityType, identityData, photoIdUrl);
         return adaptResponse(res, "Identity verification completed successfully");
     }
 

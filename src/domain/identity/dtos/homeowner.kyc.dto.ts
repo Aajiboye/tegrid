@@ -42,7 +42,10 @@ export class HomeOwnerProfileCreationDto{
 
 export class HomeOwnerIdentityVerificationDto{
     @IsString()
-    nin: string;
+    identityType: string;
+
+    @IsString()
+    identityData: string;
 
     @IsString()
     @IsOptional()

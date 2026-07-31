@@ -57,7 +57,7 @@ export class HomeOwnerKycService extends BaseAuthService implements IHomeOwnerKy
     async getKycStatus(user: User): Promise<HomeOwnerKycStatusResponse> {
         const profile = await this.homeOwnerKycRepo.findOne({ user: new mongoose.Types.ObjectId(user._id) }) || {};
         const profileItemsList = ["firstName", "lastName", "middleName", "phoneNumber", "pinHash"];
-        const identityItemsList = ["nin", "photoIdUrl"];
+        const identityItemsList = ["identityType", "identityData", "photoIdUrl"];
         const addressVerificationItemsList = ["address", "addressProofUrl"];
         return {
             profileCompleted: profileItemsList.every(item => !!profile[item]),
@@ -69,8 +69,8 @@ export class HomeOwnerKycService extends BaseAuthService implements IHomeOwnerKy
     private async ensureKycCompleted(profileId: string) {
         const profile = await this.homeOwnerKycRepo.findById(profileId);
         if (!profile) throw new BadRequestException('KYC profile not found');
-        const profileItemsList = ["firstName", "lastName", "middleName", "phoneNumber", "pinHash"];
-        const identityItemsList = ["nin", "photoIdUrl"];
+    const profileItemsList = ["firstName", "lastName", "middleName", "phoneNumber", "pinHash"];
+    const identityItemsList = ["identityType", "identityData", "photoIdUrl"];
         const addressVerificationItemsList = ["address", "addressProofUrl"];
 
         const profileCompleted = profileItemsList.every(item => !!(profile as any)[item]);
@@ -154,21 +154,29 @@ export class HomeOwnerKycService extends BaseAuthService implements IHomeOwnerKy
         }
     }
 
-    async completeIdentityVerification(user: User, nin: string, photoIdUrl: string): Promise<HomeOwnerProfileDto> {
-        // verify via external provider before persisting
-        const verification = await this.identityVerifier.verifyNin(nin);
-        if (!verification.success) {
-            throw new BadRequestException('NIN verification failed');
+    async completeIdentityVerification(user: User, identityType: string, identityData: string, photoIdUrl?: string): Promise<HomeOwnerProfileDto> {
+        // verify via external provider before persisting (if a provider supports it)
+        let verification;
+        if (this.identityVerifier.verifyIdentity) {
+            verification = await this.identityVerifier.verifyIdentity(identityType, identityData);
+        } else if (this.identityVerifier.verifyNin) {
+            // backwards compatibility: delegate to verifyNin when provider only supports NIN
+            verification = await this.identityVerifier.verifyNin(identityData);
         }
 
-        // encrypt NIN before persisting
-        const encryptedNin = this.cryptoService.encrypt(nin, this.configService.get<string>('NIN_ENCRYPTION_KEY'));
+        if (verification && !verification.success) {
+            throw new BadRequestException(`${identityType} verification failed`);
+        }
+
+        // encrypt identity data before persisting
+        const encrypted = this.cryptoService.encrypt(identityData, this.configService.get<string>('NIN_ENCRYPTION_KEY'));
         const profile: HomeOwnerKycProfile = await this.homeOwnerKycRepo.findOne({ user: new mongoose.Types.ObjectId(user._id) }) || {};
-        profile.nin = encryptedNin;
-        profile.photoIdUrl = photoIdUrl;
+        profile.identityType = identityType;
+        profile.identityData = encrypted;
+        if (photoIdUrl) profile.photoIdUrl = photoIdUrl;
         const saved = await this.homeOwnerKycRepo.updateWithUpsert({ user: new mongoose.Types.ObjectId(user._id) }, profile);
 
-        // return profile data (do not include decrypted nin here for safety)
+        // return profile data (do not include decrypted identity data here for safety)
         return {
             _id: saved._id.toString(),
             firstName: saved.firstName,
@@ -185,9 +193,9 @@ export class HomeOwnerKycService extends BaseAuthService implements IHomeOwnerKy
      * Same as completeIdentityVerification but allows caller to supply a specific encryption key (hex or base64).
      * This makes the KYC flow flexible for other sensitive fields if needed.
      */
-    async completeIdentityVerificationWithKey(user: User, nin: string, photoIdUrl: string, encryptionKey?: string): Promise<HomeOwnerProfileDto> {
-        const encryptedNin = this.cryptoService.encrypt(nin, encryptionKey);
-        const profile: HomeOwnerKycProfile = { user, nin: encryptedNin, photoIdUrl };
+    async completeIdentityVerificationWithKey(user: User, identityType: string, identityData: string, photoIdUrl?: string, encryptionKey?: string): Promise<HomeOwnerProfileDto> {
+        const encrypted = this.cryptoService.encrypt(identityData, encryptionKey);
+        const profile: HomeOwnerKycProfile = { user, identityType: identityType, identityData: encrypted, photoIdUrl } as any;
         const saved = await this.homeOwnerKycRepo.updateWithUpsert({ user: new mongoose.Types.ObjectId(user._id) }, profile);
 
         return {
@@ -205,10 +213,10 @@ export class HomeOwnerKycService extends BaseAuthService implements IHomeOwnerKy
     /**
      * Return the decrypted NIN for an authorised caller. Caller must provide the key if a non-default key was used.
      */
-    async getDecryptedNin(user: User, encryptionKey?: string): Promise<string | null> {
+    async getDecryptedIdentityData(user: User, encryptionKey?: string): Promise<string | null> {
         const profile = await this.homeOwnerKycRepo.findOne({ user: new mongoose.Types.ObjectId(user._id) });
-        if (!profile || !profile.nin) return null;
-        return this.cryptoService.decrypt(profile.nin, encryptionKey);
+        if (!profile || !profile.identityData) return null;
+        return this.cryptoService.decrypt(profile.identityData, encryptionKey);
     }
 
     async completeAddressVerification(user: User, address: string, addressProofUrl: string): Promise<HomeOwnerProfileDto> {

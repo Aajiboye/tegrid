@@ -4,6 +4,9 @@ export interface IdentityVerificationResult {
 }
 
 export interface IIdentityVerifier {
-  // Verify the supplied national identification number (nin) and return a result.
-  verifyNin(nin: string, metadata?: Record<string, any>): Promise<IdentityVerificationResult>;
+  // Verify a supplied identity value (identityData) for a given identityType and return a result.
+  verifyIdentity(identityType: string, identityData: string, metadata?: Record<string, any>): Promise<IdentityVerificationResult>;
+
+  // Backwards compatible alias for providers that implemented verifyNin
+  verifyNin?(nin: string, metadata?: Record<string, any>): Promise<IdentityVerificationResult>;
 }

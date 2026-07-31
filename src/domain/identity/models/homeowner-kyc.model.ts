@@ -6,50 +6,55 @@ import { User } from './user.model';
 
 @Schema()
 export class HomeOwnerKycProfile {
-  _id?: Types.ObjectId;
+    _id?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
-  user?: User;
+    @Prop({ type: Types.ObjectId, ref: 'User' })
+    user?: User;
 
-  @Prop()
-  firstName?: string;
+    @Prop()
+    firstName?: string;
 
-  @Prop()
-  lastName?: string;
+    @Prop()
+    lastName?: string;
 
-  @Prop()
-  middleName?: string;
+    @Prop()
+    middleName?: string;
 
-  @Prop()
-  phoneNumber?: string;
+    @Prop()
+    phoneNumber?: string;
 
-  @Prop()
-  pinHash?: string;
+    @Prop()
+    pinHash?: string;
 
-  @Prop()
-  nin?: string;
+    @Prop()
+    // identityType is a label for the identity (e.g. 'NIN', 'DRIVERS_LICENSE')
+    identityType?: string;
 
-  @Prop()
-  photoIdUrl?: string;
+    @Prop()
+    // identityData holds the encrypted identity value (e.g. encrypted NIN or license number)
+    identityData?: string;
 
-  @Prop()
-  address?: string;
+    @Prop()
+    photoIdUrl?: string;
 
-  @Prop()
-  addressProofUrl?: string;
+    @Prop()
+    address?: string;
 
-  // workflow fields
-  @Prop({ type: String, default: 'PENDING' })
-  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+    @Prop()
+    addressProofUrl?: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
-  approvedBy?: any;
+    // workflow fields
+    @Prop({ type: String, default: 'PENDING' })
+    status?: 'PENDING' | 'APPROVED' | 'REJECTED';
 
-  @Prop({ type: Date, default: null })
-  approvedAt?: Date;
+    @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+    approvedBy?: any;
 
-  @Prop({ type: String, default: null })
-  rejectionReason?: string;
+    @Prop({ type: Date, default: null })
+    approvedAt?: Date;
+
+    @Prop({ type: String, default: null })
+    rejectionReason?: string;
 }
 
 export const HomeOwnerKycProfileSchema = SchemaFactory.createForClass(HomeOwnerKycProfile);

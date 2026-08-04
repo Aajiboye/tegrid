@@ -1,4 +1,7 @@
 
+import { ApiPropertyOptional } from '@nestjs/swagger';
+
 export class CreateSignedUrlDto {
-  eagerTransformations:string;
+  @ApiPropertyOptional({ description: 'Eager transformations string for Cloudinary' })
+  eagerTransformations?: string;
 }

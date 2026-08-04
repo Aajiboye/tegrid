@@ -1,12 +1,22 @@
 import { Controller, Get, Post, UseGuards, Body, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiResponse } from '@nestjs/swagger';
 import { adaptResponse } from '../../../shared/adapters/response.adapter';
 import { HomeOwnerKycService } from '../services/home-owner-kyc.service';
 import { user } from 'src/decorators/user.decorator';
 import { User } from '../models/user.model';
 import { AuthGuard } from 'src/guards/auth.guard';
 import { RoleGuard } from 'src/guards/role.guard';
-import { HomeOwnerAddressVerificationDto, HomeOwnerIdentityVerificationDto, HomeOwnerKycRejectionDto, HomeOwnerProfileCreationDto } from '../dtos/homeowner.kyc.dto';
+import {
+    HomeOwnerAddressVerificationDto,
+    HomeOwnerIdentityVerificationDto,
+    HomeOwnerKycRejectionDto,
+    HomeOwnerProfileCreationDto,
+    HomeOwnerKycStatusResponse,
+    HomeOwnerProfileDto,
+    HomeOwnerPhoneRequestDto,
+    HomeOwnerPhoneVerifyDto,
+} from '../dtos/homeowner.kyc.dto';
 
 @ApiTags('Home Owner KYC')
 @Controller('v1/home-owner-kyc')
@@ -17,6 +27,7 @@ export class HomeOwnerKycController {
     @ApiBearerAuth()
     @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get Home Owner KYC Profile Status' })
+    @ApiResponse({ description: 'KYC status', type: HomeOwnerKycStatusResponse })
     async getStatus(@user() user: User) {
         const res = await this.homeOwnerKycService.getKycStatus(user);
         return adaptResponse(res);
@@ -26,6 +37,7 @@ export class HomeOwnerKycController {
     @ApiBearerAuth()
     @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Create or Update Home Owner KYC Profile' })
+    @ApiResponse({ description: 'Profile created or updated', type: HomeOwnerProfileDto })
     async createOrUpdateProfile(@user() user: User, @Body() payload: HomeOwnerProfileCreationDto) {
         const res = await this.homeOwnerKycService.completeProfile(user, payload);
         return adaptResponse(res, "Profile created/updated successfully");
@@ -35,7 +47,9 @@ export class HomeOwnerKycController {
     @ApiBearerAuth()
     @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Verify Home Owner Phone Number' })
-    async verifyPhoneNumber(@user() user: User, @Body() payload: { phoneNumber: string, otp: string }) {
+    @ApiResponse({ description: 'Phone verification result', type: Object })
+    @ApiBody({ type: HomeOwnerPhoneVerifyDto })
+    async verifyPhoneNumber(@user() user: User, @Body() payload: HomeOwnerPhoneVerifyDto) {
         const { phoneNumber, otp } = payload;
         await this.homeOwnerKycService.verifyPhoneNumber(user, phoneNumber, otp);
         return adaptResponse(null, "Phone number verified successfully");
@@ -45,7 +59,9 @@ export class HomeOwnerKycController {
     @ApiBearerAuth()
     @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Request OTP for Home Owner Phone Number Verification' })
-    async requestPhoneVerificationOtp(@user() user: User, @Body() payload: { phoneNumber: string }) {
+    @ApiResponse({ description: 'OTP requested', type: Object })
+    @ApiBody({ type: HomeOwnerPhoneRequestDto })
+    async requestPhoneVerificationOtp(@user() user: User, @Body() payload: HomeOwnerPhoneRequestDto) {
         const { phoneNumber } = payload;
         await this.homeOwnerKycService.requestPhoneVerificationOtp(user, phoneNumber);
         return adaptResponse(null, "OTP sent successfully");
@@ -55,6 +71,7 @@ export class HomeOwnerKycController {
     @ApiBearerAuth()
     @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Complete Home Owner Identity Verification' })
+    @ApiResponse({ description: 'Identity verified', type: HomeOwnerProfileDto })
     async completeIdentityVerification(@user() user: User, @Body() payload: HomeOwnerIdentityVerificationDto) {
         const { identityType, identityData, photoIdUrl } = payload;
         const res = await this.homeOwnerKycService.completeIdentityVerification(user, identityType, identityData, photoIdUrl);
@@ -65,6 +82,7 @@ export class HomeOwnerKycController {
     @ApiBearerAuth()
     @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Complete Home Owner Address Verification' })
+    @ApiResponse({ description: 'Address verified', type: HomeOwnerProfileDto })
     async completeAddressVerification(@user() user: User, @Body() payload: HomeOwnerAddressVerificationDto) {
         const { homeAddress, addressProofUrl } = payload;
         const res = await this.homeOwnerKycService.completeAddressVerification(user, homeAddress, addressProofUrl);
@@ -75,6 +93,7 @@ export class HomeOwnerKycController {
     @ApiBearerAuth()
     @UseGuards(AuthGuard)
     @ApiOperation({ summary: 'Get Home Owner KYC Profile' })
+    @ApiResponse({ description: 'KYC profile', type: HomeOwnerProfileDto })
     async getProfile(@user() user: User) {
         const res = await this.homeOwnerKycService.getKycProfile(user);
         return adaptResponse(res);
@@ -85,6 +104,7 @@ export class HomeOwnerKycController {
     @ApiBearerAuth()
     @UseGuards(AuthGuard, RoleGuard)
     @ApiOperation({ summary: 'Admin: Approve a Home Owner KYC' })
+    @ApiResponse({ description: 'KYC approved', type: HomeOwnerProfileDto })
     async approveKyc(@user() user: User, @Param('id') id: string) {
         const res = await this.homeOwnerKycService.approveKyc(id, user._id.toString());
         return adaptResponse(res, 'KYC approved');
@@ -94,6 +114,7 @@ export class HomeOwnerKycController {
     @ApiBearerAuth()
     @UseGuards(AuthGuard, RoleGuard)
     @ApiOperation({ summary: 'Admin: Reject a Home Owner KYC' })
+    @ApiResponse({ description: 'KYC rejected', type: HomeOwnerProfileDto })
     async rejectKyc(@user() user: User, @Param('id') id: string, @Body() payload: HomeOwnerKycRejectionDto) {
         const res = await this.homeOwnerKycService.rejectKyc(id, user._id.toString(), payload.reason);
         return adaptResponse(res, 'KYC rejected');

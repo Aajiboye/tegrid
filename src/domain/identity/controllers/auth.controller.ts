@@ -13,8 +13,11 @@ import {
   ResetPasswordPayload,
   UserSignUpPayLoad,
   VerifyEmailPayload,
+  LoginResponse,
+  VerifyEmailResponse,
+  SignUpResponse,
 } from '../dtos/auth.payload.dto';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from '../services/auth.service';
 import { adaptResponse } from '../../../shared/adapters/response.adapter';
 
@@ -25,18 +28,21 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  async login(@Body() payload: LoginPayload, @Param('entity') entity: string) {
+  @ApiResponse({ type: LoginResponse })
+  async login(@Body() payload: LoginPayload) {
     return adaptResponse(await this.service.login(payload));
   }
 
   @HttpCode(HttpStatus.CREATED)
   @Post('complete-profile')
+  @ApiResponse({ type: SignUpResponse })
   async signUp(@Body() payload: UserSignUpPayLoad) {
     return adaptResponse(await this.service.completeProfile(payload));
   }
 
   @HttpCode(HttpStatus.OK)
   @Post('/email/verify')
+  @ApiResponse({ type: VerifyEmailResponse })
   async verifyEmail(
     @Body() payload: VerifyEmailPayload,
   ) {

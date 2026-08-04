@@ -17,10 +17,17 @@ async function bootstrap() {
     .addServer('https://staging.yourapi.com/', 'Staging')
     .addServer('https://production.yourapi.com/', 'Production')
     .addTag('TradeExpertGrid API')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
     .build();
 
   const document = SwaggerModule.createDocument(app, options);
-  SwaggerModule.setup('api-docs', app, document);
+  // Swagger UI at /docs
+  SwaggerModule.setup('docs', app, document, {
+    swaggerOptions: { persistAuthorization: true },
+  });
+
+  // Raw OpenAPI JSON at /docs-json
+  app.use('/docs-json', (_req, res) => res.json(document));
 
   // Global ValidationPipe with options
   app.useGlobalPipes(
@@ -33,7 +40,6 @@ async function bootstrap() {
       },
     }),
   );
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   app.enableCors();
 
   await app.listen(port);

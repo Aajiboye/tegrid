@@ -1,13 +1,19 @@
-import { IsString } from "class-validator";
+import { IsOptional, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UserProfileDto {
+      @ApiProperty()
       _id: string;
-      rank: string;
-      userName: string;
-      email: string;
-      currentLevel: string;
-      online: boolean;
-      profileAvatar?: string;
+      @ApiPropertyOptional()
+      email?: string;
+      @ApiPropertyOptional()
+      phoneNumber?: string;
+      @ApiPropertyOptional()
+      userName?: string;
+      @ApiPropertyOptional()
+      userType?: string;
+      @ApiPropertyOptional()
+      createdAt?: string;
 }
 
 export class UserProfileDtoEnriched extends UserProfileDto {  
@@ -19,15 +25,21 @@ export class UserProfileDtoEnriched extends UserProfileDto {
 }
 
 export class UpdateProfileDto{
-    @IsString()
-    userName: string;
-    @IsString()
-    profileAvatar?: string;
+      @IsString()
+      @IsOptional()
+      @ApiPropertyOptional({ example: 'john_doe' })
+      userName?: string;
+      @IsString()
+      @IsOptional()
+      @ApiPropertyOptional({ example: 'avatar_url' })
+      profileAvatar?: string;
 }
 
 export class DeleteAccountDto {
-  @IsString()
-  reason: string;
-  @IsString() 
-  details?: string;
+      @IsString()
+      @IsOptional()
+      @ApiPropertyOptional({ description: 'Optional reason for account deletion' })
+      reason?: string;
+      @IsString() 
+      details?: string;
 }

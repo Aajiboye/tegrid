@@ -12,7 +12,8 @@ import { FirebaseAuthService } from './services/firebase-auth.service';
 import { EmailUtilService } from '../../shared/utils/email.util';
 import { PasswordUtilService } from '../../shared/utils/password.util';
 import { OTPUtilService } from '../../shared/utils/otp.utils';
-import { PhoneUtilService } from 'src/shared/utils/phone.utils';
+import { PhoneUtilService } from '../../shared/utils/phone.utils';
+import { SharedModule } from '../../shared/shared.module';
 import { HomeOwnerKycController } from './controllers/home-owner-kyc.controller';
 import { HomeOwnerKycService } from './services/home-owner-kyc.service';
 import { HomeOwnerKycRepository } from './repositories/homeowner-kyc.repo';
@@ -20,22 +21,35 @@ import { AdminService } from './services/admin.service';
 import { HomeOwnerKycProfile, HomeOwnerKycProfileSchema } from './models/homeowner-kyc.model';
 import { PhoneNumberVerificationRepository } from './repositories/phone-verification.repo';
 import { PhoneNumberVerification, PhoneNumberVerificationSchema } from './models/phone-number-verifications.model';
-import { CryptoService } from 'src/shared/services/crypto.service';
+import { CryptoService } from '../../shared/services/crypto.service';
 import { RoleGuard } from 'src/guards/role.guard';
 import { VerifyMeProvider } from './providers/verifyme.provider';
 import { IDENTITY_VERIFIER } from './providers/constants';
 import { AuditModule } from 'src/shared/audit.module';
+import { Admin, AdminSchema } from './models/admin.model';
+import { AdminRepository } from './repositories/admin.repo';
+import { AdminAuthController } from './controllers/admin-auth.controller';
+import { AuditService } from '../../shared/services/audit.service';
+import { AuditRepository } from '../../shared/repositories/audit.repo';
+import { AuditLog, AuditLogSchema } from 'src/shared/models/audit.model';
+import { TradePersonAuthService } from './services/trade-person-auth.service';
+import { TradePersonUserRepository } from './repositories/trade-person-user.repo';
 
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
-      {name: Token.name, schema: TokenSchema},
-      {name: HomeOwnerKycProfile.name, schema: HomeOwnerKycProfileSchema},
-      {name: PhoneNumberVerification.name, schema: PhoneNumberVerificationSchema},
+      { name: Token.name, schema: TokenSchema },
+      { name: HomeOwnerKycProfile.name, schema: HomeOwnerKycProfileSchema },
+      { name: 'TradePersonUserProfile', schema: (require('./models/trade-person-user.model').TradePersonUserProfileSchema) },
+      { name: PhoneNumberVerification.name, schema: PhoneNumberVerificationSchema },
+      { name: Admin.name, schema: AdminSchema },
+      { name: AuditLog.name, schema: AuditLogSchema }
+
     ]),
     AuditModule,
+    SharedModule,
   ],
   providers: [
     TokenRepository,
@@ -47,11 +61,17 @@ import { AuditModule } from 'src/shared/audit.module';
     PasswordUtilService,
     OTPUtilService,
     PhoneUtilService,
+    TradePersonUserRepository,
     HomeOwnerKycService,
     HomeOwnerKycRepository,
+    TradePersonAuthService,
     PhoneNumberVerificationRepository,
     CryptoService,
     RoleGuard,
+    AdminRepository,
+    AdminService,
+    AuditService,
+    AuditRepository,
     // pluggable identity verifier (bound to token)
     {
       provide: IDENTITY_VERIFIER,
@@ -61,13 +81,17 @@ import { AuditModule } from 'src/shared/audit.module';
   controllers: [
     AuthController,
     FirebaseAuthController,
-    HomeOwnerKycController
+    HomeOwnerKycController,
+    AdminAuthController,
+    (require('./controllers/trade-person-auth.controller').TradePersonAuthController),
   ],
   exports: [
     UserRepository,
     TokenRepository,
     HomeOwnerKycService,
     HomeOwnerKycRepository,
+    AdminService,
+    AdminRepository,
   ],
 })
-export class UserModule {}
+export class UserModule { }

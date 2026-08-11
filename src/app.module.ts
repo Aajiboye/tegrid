@@ -5,7 +5,6 @@ import { AppService } from './app.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { config } from './config/config';
 import { UserModule } from './domain/identity/user.module';
-import { AdminModule } from './domain/identity/admin.module';
 import { JobsModule } from './domain/jobs/jobs.module';
 import { TokenService } from './shared/services/token.service';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -30,7 +29,6 @@ const configService = new ConfigService();
       secret: configService.getOrThrow<string>('JWT_SECRET'),
     }),
     UserModule,
-    AdminModule,
     JobsModule,
   ],
   controllers: [AppController],

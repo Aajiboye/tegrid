@@ -41,6 +41,10 @@ export class UserSignUpPayLoad {
   @IsNotEmpty()
   @ApiProperty({ example: 'Password@123' })
   password: string;
+
+  @IsNotEmpty()
+  @ApiProperty({ enum: Object.values(UserType) })
+  userType: UserType;
 }
 
 export class VendorSignUpPayLoad {

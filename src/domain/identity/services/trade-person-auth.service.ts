@@ -92,7 +92,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
     });
 
     user.accessToken = accessToken;
-    await this.userRepo.update({ _id: user._id }, user);
+    await this.tradePersonUserRepo.updateWithUpsert({ _id: user._id }, user);
 
     return {
       _id: user._id.toString(),
@@ -114,7 +114,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
       query = { phoneNumber: this.phoneUtil.normalizePhone(identifier) };
     }
 
-    let user = await this.userRepo.findOne(query);
+    let user = await this.tradePersonUserRepo.findOne(query);
 
     if (!user) throw new NotFoundException(`User with specified ${identifier.includes('@') ? 'email' : 'phone number'} not found`);
 
@@ -126,7 +126,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
     user.profileAvatar = _signupPayload.profileAvatar;
     user.userName = _signupPayload.userName;
     user.role = Role.User
-    user = await this.userRepo.save(user);
+    user = await this.tradePersonUserRepo.save(user);
 
 
     return {
@@ -142,7 +142,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<void> {
     const email = this.emailUtil.normalizeEmail(forgotPasswordDto.email);
-    const user = await this.userRepo.findOne({ email });
+    const user = await this.tradePersonUserRepo.findOne({ email });
     if (!user) return;
 
     const otp = await this.requestOtp(email, 'RESET_PASSWORD');
@@ -158,7 +158,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
     _resetPasswordPayload: ResetPasswordPayload,
   ): Promise<void> {
     const email = this.emailUtil.normalizeEmail(_resetPasswordPayload.email);
-    const user = await this.userRepo.findOne({
+    const user = await this.tradePersonUserRepo.findOne({
       email,
     });
     if (!user) throw new UnauthorizedException('Invalid Credentials');
@@ -173,7 +173,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
     if (!token) throw new BadRequestException("OTP expired or doesn't exist");
 
     user.password = this.passwordUtil.hashPassword(_resetPasswordPayload.newPassword);
-    this.userRepo.save(user);
+    this.tradePersonUserRepo.save(user);
     this.tokenRepo.deleteById(token._id.toString());
   }
 
@@ -187,7 +187,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
 
   async requestEmailVerificationOtp(identifier: string): Promise<void> {
     const email = this.emailUtil.normalizeEmail(identifier);
-    const user = await this.userRepo.findOne({ email });
+    const user = await this.tradePersonUserRepo.findOne({ email });
     if (user) throw new DuplicateUserError("User with the same email already exists");
 
     const otp = await this.requestOtp(email, 'ONBOARDING');
@@ -202,7 +202,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
 
   async requestPhoneNumberVerificationOtp(phoneNumber: string): Promise<void> {
     const phone = this.phoneUtil.normalizePhone(phoneNumber);
-    const user = await this.userRepo.findOne({ phoneNumber: phone });
+    const user = await this.tradePersonUserRepo.findOne({ phoneNumber: phone });
     if (user) throw new DuplicateUserError('User with the same phone number already exists');
 
     const otp = await this.requestOtp(phone, 'ONBOARDING');
@@ -243,7 +243,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
   if(emailNormalized) user.email = emailNormalized;
   if(phoneNormalized) user.phoneNumber = phoneNormalized;
     user.userType = UserType.HomeOwner;
-    this.userRepo.save(user);
+    this.tradePersonUserRepo.save(user);
 
     this.tokenRepo.deleteById(token._id.toString());
 

@@ -1,50 +1,59 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
 import { User } from './user.model';
+import { UserType } from '../enums/user-types.enum';
+import { Role } from '../enums/roles.enum';
 
 @Schema()
 export class TradePersonUserProfile {
   _id?: Types.ObjectId;
-
-  @Prop({ type: Types.ObjectId, ref: 'User' })
-  user?: User;
-
-  @Prop()
-  firstName?: string;
-
-  @Prop()
-  lastName?: string;
-
-  @Prop()
-  businessName?: string;
-
-  @Prop()
-  phoneNumber?: string;
-
-  @Prop()
-  contactName?: string;
-
-  @Prop()
-  photoIdUrl?: string;
-
-  @Prop()
-  address?: string;
-
-  @Prop()
-  addressProofUrl?: string;
-
-  // identity fields (encrypted)
-  @Prop()
-  identityType?: string;
-
-  @Prop()
-  identityData?: string;
-
-  @Prop({ default: false })
-  phoneVerified?: boolean;
-
-  @Prop({ default: false })
-  profileCompleted?: boolean;
+  
+    @Prop({
+      trim: true,
+      lowercase: true,
+    })
+    email: string;
+  
+    @Prop({
+      trim: true,
+      lowercase: true,
+    })
+    phoneNumber: string;
+  
+      @Prop({
+      trim: true,
+    })
+    userName?: string;
+  
+    @Prop()
+    profileAvatar?: string;
+  
+    @Prop({ type: String, enum: Role, default: Role.User })
+    role: Role;
+  
+    @Prop({ type: String, enum: UserType, default: UserType.TradesPerson })
+    userType: UserType;
+  
+    @Prop()
+    password: string;
+  
+    accessToken?: string;
+  
+    @Prop({ type: Boolean, default: false })
+    isVerified?: boolean;
+  
+    
+    @Prop({ type: String, default: null })
+    firebaseUid: string;
+  
+    @Prop({ type: Date, default: null })
+    deletedAt?: Date;
+  
+    @Prop({ type: String, default: null })
+    deletedBy?: string;
+  
+    @Prop({ type: String, default: null })
+    deletionReason?: string;
 }
 
 export const TradePersonUserProfileSchema = SchemaFactory.createForClass(TradePersonUserProfile);

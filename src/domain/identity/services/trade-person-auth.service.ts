@@ -16,11 +16,9 @@ import {
   UserNameExistenceResponse,
   ForgotPasswordDto,
 } from '../dtos/auth.payload.dto';
-import { UserRepository } from '../repositories/user.repo';
 import { TokenService } from '../../../shared/services/token.service';
 import { DuplicateUserError } from '../../../shared/errors';
 import { TokenRepository } from '../repositories/token.repo';
-import { User } from '../models/user.model';
 import { Role } from '../enums/roles.enum';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EmailUtilService } from '../../../shared/utils/email.util';
@@ -31,6 +29,7 @@ import { ConfigService } from '@nestjs/config';
 import { UserType } from '../enums/user-types.enum';
 import { BaseAuthService } from './base.auth.service';
 import { TradePersonUserRepository } from '../repositories/trade-person-user.repo';
+import { TradePerson } from '../models/trade-person-user.model';
 
 @Injectable()
 export class TradePersonAuthService extends BaseAuthService implements IAuth {
@@ -190,7 +189,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
     const user = await this.tradePersonUserRepo.findOne({ email });
     if (user) throw new DuplicateUserError("User with the same email already exists");
 
-    const otp = await this.requestOtp(email, 'ONBOARDING');
+    const otp = await this.requestOtp(email, 'TRADEPERSON_ONBOARDING');
     this.eventEmitter.emit('Send.NewUser', {
       name: email,
       to: email,
@@ -205,7 +204,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
     const user = await this.tradePersonUserRepo.findOne({ phoneNumber: phone });
     if (user) throw new DuplicateUserError('User with the same phone number already exists');
 
-    const otp = await this.requestOtp(phone, 'ONBOARDING');
+    const otp = await this.requestOtp(phone, 'TRADEPERSON_ONBOARDING');
 
     this.eventEmitter.emit('Send.PhoneVerification', {
       name: phone,
@@ -223,7 +222,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
     const identifier = verifyEmailPayload.identifier;
     let emailNormalized = '';
     let phoneNormalized = '';
-    const query = {tokenType: 'ONBOARDING',
+    const query = {tokenType: 'TRADEPERSON_ONBOARDING',
       otp: verifyEmailPayload.otp,
       expiresAt: { $gte: Date.now() },}
 
@@ -238,15 +237,15 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
 
     if (!token) throw new BadRequestException("OTP expired or doesn't exist");
 
-  const user = new User();
-  user.isVerified = true;
-  if(emailNormalized) user.email = emailNormalized;
-  if(phoneNormalized) user.phoneNumber = phoneNormalized;
-    user.userType = UserType.HomeOwner;
-    this.tradePersonUserRepo.save(user);
+  const tradePerson = new TradePerson();
+  tradePerson.isVerified = true;
+  if(emailNormalized) tradePerson.email = emailNormalized;
+  if(phoneNormalized) tradePerson.phoneNumber = phoneNormalized;
+    tradePerson.userType = UserType.TRADESPERSON;
+    this.tradePersonUserRepo.save(tradePerson);
 
     this.tokenRepo.deleteById(token._id.toString());
 
-    return { verified: user.isVerified };
+    return { verified: tradePerson.isVerified };
   }
 }

@@ -34,6 +34,7 @@ import { AuditRepository } from '../../shared/repositories/audit.repo';
 import { AuditLog, AuditLogSchema } from 'src/shared/models/audit.model';
 import { TradePersonAuthService } from './services/trade-person-auth.service';
 import { TradePersonUserRepository } from './repositories/trade-person-user.repo';
+import { TradePerson, TradePersonSchema } from './models/trade-person-user.model';
 
 
 @Module({
@@ -42,7 +43,7 @@ import { TradePersonUserRepository } from './repositories/trade-person-user.repo
       { name: User.name, schema: UserSchema },
       { name: Token.name, schema: TokenSchema },
       { name: HomeOwnerKycProfile.name, schema: HomeOwnerKycProfileSchema },
-      { name: 'TradePersonUserProfile', schema: (require('./models/trade-person-user.model').TradePersonUserProfileSchema) },
+      { name: TradePerson.name, schema: TradePersonSchema },
       { name: PhoneNumberVerification.name, schema: PhoneNumberVerificationSchema },
       { name: Admin.name, schema: AdminSchema },
       { name: AuditLog.name, schema: AuditLogSchema }

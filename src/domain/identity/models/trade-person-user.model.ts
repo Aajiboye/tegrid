@@ -5,7 +5,7 @@ import { UserType } from '../enums/user-types.enum';
 import { Role } from '../enums/roles.enum';
 
 @Schema()
-export class TradePersonUserProfile {
+export class TradePerson {
   _id?: Types.ObjectId;
   
     @Prop({
@@ -56,5 +56,5 @@ export class TradePersonUserProfile {
     deletionReason?: string;
 }
 
-export const TradePersonUserProfileSchema = SchemaFactory.createForClass(TradePersonUserProfile);
-TradePersonUserProfileSchema.set('timestamps', true);
+export const TradePersonSchema = SchemaFactory.createForClass(TradePerson);
+TradePersonSchema.set('timestamps', true);

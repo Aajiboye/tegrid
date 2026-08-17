@@ -53,10 +53,11 @@ export class JobsService {
       throw new BadRequestException('tradespersonId cannot be the same as the user');
     }
 
-    if(!(await this.userRepo.findOne({_id: dto.tradespersonId, userType: UserType.TRADESPERSON}))) {
+    if(dto.visibility == "PRIVATE" && !(await this.userRepo.findOne({_id: dto.tradespersonId, userType: UserType.TRADESPERSON}))) {
       throw new BadRequestException('Invalid tradespersonId');
     }
 
+    console.log('preferredDate:', dto.preferredDate, 'current date:', new Date().toISOString());
     if(dto.preferredDate < new Date().toISOString()) {
       throw new BadRequestException('preferredDate cannot be in the past');
     }

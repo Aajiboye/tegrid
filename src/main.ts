@@ -1,3 +1,5 @@
+// Ensure module-alias is registered early so runtime path aliases like `src/...` resolve in compiled code
+import 'module-alias/register';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';

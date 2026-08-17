@@ -7,19 +7,18 @@ import { JobRequestRepository } from './repositories/job-request.repo';
 import { JobsService } from './services/jobs.service';
 import { JobsController } from './controllers/jobs.controller';
 import { JobTypesController } from './controllers/job-types.controller';
-import { TokenService } from 'src/shared/services/token.service';
-import { UserModule } from '../identity/user.module';
-import { UserRepository } from '../identity/repositories/user.repo';
-import { User, UserSchema } from '../identity/models/user.model';
+import { UserModule } from 'src/domain/identity/user.module';
+import { SharedModule } from 'src/shared/shared.module';
 
 @Module({
     imports: [
-        MongooseModule.forFeature([{ name: JobType.name, schema: JobTypeSchema }, { name: JobRequest.name, schema: JobRequestSchema }, { name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([{ name: JobType.name, schema: JobTypeSchema }, { name: JobRequest.name, schema: JobRequestSchema }]),
         forwardRef(() => UserModule),
+        SharedModule,
     ],
-    providers: [JobTypeRepository, JobRequestRepository, JobsService, TokenService, UserRepository],
+    providers: [JobTypeRepository, JobRequestRepository, JobsService],
     controllers: [JobsController, JobTypesController],
-    exports: [JobsService],
+    exports: [JobsService, JobTypeRepository],
 })
 export class JobsModule implements OnModuleInit {
     constructor(private readonly jobsService: JobsService) { }

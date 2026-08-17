@@ -5,7 +5,7 @@ import { ForgotPasswordDto, LoginPayload, LoginResponse, RequestEmailOtp, ResetP
 import { TradePersonAuthService } from '../services/trade-person-auth.service';
 
 @ApiTags('TradePerson Onboarding')
-@Controller('v1/trade-person/auth')
+@Controller('v1/tradeperson/auth')
 export class TradePersonAuthController {
     constructor(private readonly service: TradePersonAuthService) { }
 

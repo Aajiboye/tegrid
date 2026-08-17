@@ -13,12 +13,12 @@ import { SharedModule } from 'src/shared/shared.module';
 @Module({
     imports: [
     MongooseModule.forFeature([{ name: JobType.name, schema: JobTypeSchema }, { name: JobRequest.name, schema: JobRequestSchema }]),
-        UserModule,
+        forwardRef(() => UserModule),
         SharedModule,
     ],
     providers: [JobTypeRepository, JobRequestRepository, JobsService],
     controllers: [JobsController, JobTypesController],
-    exports: [JobsService],
+    exports: [JobsService, JobTypeRepository],
 })
 export class JobsModule implements OnModuleInit {
     constructor(private readonly jobsService: JobsService) { }

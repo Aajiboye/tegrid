@@ -15,7 +15,7 @@ export class TradePersonUserRepository {
   }
 
   async findOne(query: any): Promise<TradePerson> {
-    return this.model.findOne(query);
+    return this.model.findOne(query).populate('mainTradeCategory');
   }
 
   async updateWithUpsert(query: any, payload: any): Promise<TradePerson> {

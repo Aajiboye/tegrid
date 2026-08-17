@@ -35,6 +35,7 @@ import { AuditLog, AuditLogSchema } from 'src/shared/models/audit.model';
 import { TradePersonAuthService } from './services/trade-person-auth.service';
 import { TradePersonUserRepository } from './repositories/trade-person-user.repo';
 import { TradePerson, TradePersonSchema } from './models/trade-person-user.model';
+import { JobsModule } from 'src/domain/jobs/jobs.module';
 
 
 @Module({
@@ -51,6 +52,7 @@ import { TradePerson, TradePersonSchema } from './models/trade-person-user.model
     ]),
     AuditModule,
     SharedModule,
+    forwardRef(() => JobsModule),
   ],
   providers: [
     TokenRepository,

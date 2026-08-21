@@ -1,14 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { HomeOwner } from './home-owner-user.model';
+import { TradePerson } from './trade-person-user.model';
 
 @Schema()
-export class HomeOwnerKycProfile {
+export class TradePersonKycProfile {
     _id?: Types.ObjectId;
 
-    @Prop({ type: Types.ObjectId, ref: 'HomeOwner' })
-    user?: HomeOwner;
-
+    @Prop({ type: Types.ObjectId, ref: 'TradePerson' })
+    user?: TradePerson;
     @Prop()
     firstName?: string;
 
@@ -36,10 +35,31 @@ export class HomeOwnerKycProfile {
     photoIdUrl?: string;
 
     @Prop()
-    address?: string;
+    addressProofUrl?: string;
 
     @Prop()
-    addressProofUrl?: string;
+    dob?: string;
+
+    @Prop()
+    homeAddress?: string;
+
+    @Prop({ type: String})
+    healthAndSafetyCertificateUrl?: string;
+
+    @Prop({ type: String})
+    policeCharacterReportUrl?: string;
+
+    @Prop({ type: String})
+    bankName?: string;
+
+    @Prop({ type: String})
+    accountNumber?: string;
+
+    @Prop({ type: String})
+    accountName?: string;
+
+    @Prop({ type: String})
+    mainTrade?: string;
 
     // workflow fields
     @Prop({ type: String, default: 'PENDING' })
@@ -55,7 +75,6 @@ export class HomeOwnerKycProfile {
     rejectionReason?: string;
 }
 
-export const HomeOwnerKycProfileSchema = SchemaFactory.createForClass(HomeOwnerKycProfile);
+export const TradePersonKycSchema = SchemaFactory.createForClass(TradePersonKycProfile);
 
-HomeOwnerKycProfileSchema.set('timestamps', true);
-
+TradePersonKycSchema.set('timestamps', true);

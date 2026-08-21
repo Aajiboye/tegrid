@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { User } from '../models/user.model';
+import { HomeOwner } from '../models/home-owner-user.model';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
 @Injectable()
-export class UserRepository {
+export class HomeOwnerRepository {
   constructor(
-    @InjectModel(User.name)
-    private readonly model: Model<User>,
+    @InjectModel(HomeOwner.name)
+    private readonly model: Model<HomeOwner>,
   ) {}
 
-  async findById(id: string, options?: { includeDeleted?: boolean }): Promise<User> {
+  async findById(id: string, options?: { includeDeleted?: boolean }): Promise<HomeOwner > {
     // exclude soft-deleted users by default unless caller asks to include them
     const includeDeleted = !!options && options.includeDeleted === true;
     const query: any = { _id: id };
@@ -18,7 +18,7 @@ export class UserRepository {
     return this.model.findOne(query);
   }
 
-  async findOne(query: any): Promise<User> {
+  async findOne(query: any): Promise<HomeOwner> {
     // If caller provided a query that explicitly includes deletedAt or asks
     // for deleted records (by setting __includeDeleted === true), respect it.
     const includeDeleted = !!query && query.__includeDeleted === true;
@@ -28,7 +28,7 @@ export class UserRepository {
     return this.model.findOne(finalQuery);
   }
 
-  async update(query: any, payload: any): Promise<User> {
+  async update(query: any, payload: any): Promise<HomeOwner> {
     return this.model.findOneAndUpdate(query, payload, { new: true });
   }
 
@@ -40,11 +40,11 @@ export class UserRepository {
     return this.model.findByIdAndDelete(id);
   }
 
-  async save(payload: User) {
+  async save(payload: HomeOwner) {
     return this.model.create(payload);
   }
 
-  async find(query): Promise<User[]> {
+  async find(query): Promise<HomeOwner[]> {
     const includeDeleted = !!query && query.__includeDeleted === true;
     if (query && query.__includeDeleted !== undefined) delete query.__includeDeleted;
     const finalQuery = { ...(query || {}) } as any;

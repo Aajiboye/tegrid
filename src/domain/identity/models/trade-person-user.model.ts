@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { User } from './user.model';
+import { HomeOwner } from './home-owner-user.model';
 import { UserType } from '../enums/user-types.enum';
 import { Role } from '../enums/roles.enum';
 
@@ -8,6 +8,9 @@ import { Role } from '../enums/roles.enum';
 export class TradePerson {
   _id?: Types.ObjectId;
   
+    @Prop({ type: Types.ObjectId, ref: 'HomeOwner' })
+    user?: HomeOwner;
+
     @Prop({
       trim: true,
       lowercase: true,

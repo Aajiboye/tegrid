@@ -1,13 +1,13 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { User } from './user.model';
+import { HomeOwner } from './home-owner-user.model';
 
 @Schema()
 export class PhoneNumberVerification {
   _id?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
-  user: User;
+  @Prop({ type: Types.ObjectId, ref: 'HomeOwner' })
+  user: HomeOwner;
 
   @Prop()
   phoneNumber: string;

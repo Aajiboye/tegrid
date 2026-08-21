@@ -16,11 +16,11 @@ import {
   UserNameExistenceResponse,
   ForgotPasswordDto,
 } from '../dtos/auth.payload.dto';
-import { UserRepository } from '../repositories/user.repo';
+import { HomeOwnerRepository } from '../repositories/user.repo';
 import { TokenService } from '../../../shared/services/token.service';
 import { DuplicateUserError } from '../../../shared/errors';
 import { TokenRepository } from '../repositories/token.repo';
-import { User } from '../models/user.model';
+import { HomeOwner } from '../models/home-owner-user.model';
 import { Role } from '../enums/roles.enum';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { EmailUtilService } from '../../../shared/utils/email.util';
@@ -33,7 +33,7 @@ import { UserType } from '../enums/user-types.enum';
 @Injectable()
 export class AuthService implements IAuth {
   constructor(
-    private readonly userRepo: UserRepository,
+    private readonly userRepo: HomeOwnerRepository,
     private readonly tokenRepo: TokenRepository,
     private readonly emailUtil: EmailUtilService,
     private readonly passwordUtil: PasswordUtilService,
@@ -86,6 +86,7 @@ export class AuthService implements IAuth {
       _id: user._id,
       role: user.role,
       profileAvatar: user.profileAvatar,
+      userType: user.userType,
       userName: user.userName,
     });
 
@@ -157,7 +158,7 @@ export class AuthService implements IAuth {
 
     if (!token) throw new BadRequestException("OTP expired or doesn't exist");
 
-  const user = new User();
+  const user = new HomeOwner();
   user.isVerified = true;
   if(emailNormalized) user.email = emailNormalized;
   if(phoneNormalized) user.phoneNumber = phoneNormalized;

@@ -1,8 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { AuthService } from './services/auth.service';
-import { UserRepository } from './repositories/user.repo';
+import { AuthService } from './services/home-owner-auth.service';
 import { TokenRepository } from './repositories/token.repo';
-import { User, UserSchema } from './models/user.model';
+import { HomeOwner, HomeOwnerSchema } from './models/home-owner-user.model';
 import { MongooseModule } from '@nestjs/mongoose';
 import { TokenService } from '../../shared/services/token.service';
 import { AuthController } from './controllers/auth.controller';
@@ -35,18 +34,26 @@ import { AuditLog, AuditLogSchema } from 'src/shared/models/audit.model';
 import { TradePersonAuthService } from './services/trade-person-auth.service';
 import { TradePersonUserRepository } from './repositories/trade-person-user.repo';
 import { TradePerson, TradePersonSchema } from './models/trade-person-user.model';
+import { TradePersonKycService } from './services/trade-person-kyc.service';
+import { TradePersonKycController } from './controllers/trade-person-kyc.controller';
+import { BaseKycService } from './services/base-kyc.service';
+import { HomeOwnerRepository } from './repositories/user.repo';
+import { TradePersonKycRepository } from './repositories/trade-person-kyc.repo';
+import { UserTypeGuard } from 'src/guards/user-type.guard';
+import { TradePersonKycProfile, TradePersonKycSchema } from './models/trade-person-kyc.model';
 
 
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: User.name, schema: UserSchema },
+      { name: HomeOwner.name, schema: HomeOwnerSchema },
       { name: Token.name, schema: TokenSchema },
       { name: HomeOwnerKycProfile.name, schema: HomeOwnerKycProfileSchema },
       { name: TradePerson.name, schema: TradePersonSchema },
       { name: PhoneNumberVerification.name, schema: PhoneNumberVerificationSchema },
       { name: Admin.name, schema: AdminSchema },
-      { name: AuditLog.name, schema: AuditLogSchema }
+      { name: AuditLog.name, schema: AuditLogSchema },
+      { name: TradePersonKycProfile.name, schema: TradePersonKycSchema },
 
     ]),
     AuditModule,
@@ -57,7 +64,7 @@ import { TradePerson, TradePersonSchema } from './models/trade-person-user.model
     AuthService,
     TokenService,
     FirebaseAuthService,
-    UserRepository,
+    HomeOwnerRepository,
     EmailUtilService,
     PasswordUtilService,
     OTPUtilService,
@@ -66,14 +73,18 @@ import { TradePerson, TradePersonSchema } from './models/trade-person-user.model
     HomeOwnerKycService,
     HomeOwnerKycRepository,
     TradePersonAuthService,
+    TradePersonKycService,
+    BaseKycService,
     PhoneNumberVerificationRepository,
     CryptoService,
     RoleGuard,
+    UserTypeGuard,
     AdminRepository,
     AdminService,
     AuditService,
     AuditRepository,
     // pluggable identity verifier (bound to token)
+    TradePersonKycRepository,
     {
       provide: IDENTITY_VERIFIER,
       useClass: VerifyMeProvider,
@@ -83,11 +94,12 @@ import { TradePerson, TradePersonSchema } from './models/trade-person-user.model
     AuthController,
     FirebaseAuthController,
     HomeOwnerKycController,
+    TradePersonKycController,
     AdminAuthController,
     (require('./controllers/trade-person-auth.controller').TradePersonAuthController),
   ],
   exports: [
-    UserRepository,
+    HomeOwnerRepository,
     TokenRepository,
     HomeOwnerKycService,
     HomeOwnerKycRepository,

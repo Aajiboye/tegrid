@@ -1,6 +1,5 @@
 import { IsOptional, IsString, IsUrl } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { URL } from "url";
 
 export class HomeOwnerKycStatusResponse{
     profileCompleted: boolean;

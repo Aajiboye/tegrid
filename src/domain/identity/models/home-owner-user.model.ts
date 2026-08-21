@@ -4,7 +4,7 @@ import { Role } from '../enums/roles.enum';
 import { UserType } from '../enums/user-types.enum';
 
 @Schema()
-export class User {
+export class HomeOwner {
   _id?: Types.ObjectId;
 
   @Prop({
@@ -55,13 +55,13 @@ export class User {
   deletionReason?: string;
 }
 
-export const UserSchema = SchemaFactory.createForClass(User);
+export const HomeOwnerSchema = SchemaFactory.createForClass(HomeOwner);
 
-UserSchema.set('timestamps', true);
+HomeOwnerSchema.set('timestamps', true);
 
 // Create partial unique indexes so that documents with null/empty emails or phoneNumbers
 // do not violate uniqueness. The index only applies when the field is a non-empty string.
-UserSchema.index(
+HomeOwnerSchema.index(
   { email: 1 },
   {
     unique: true,
@@ -69,7 +69,7 @@ UserSchema.index(
   },
 );
 
-UserSchema.index(
+HomeOwnerSchema.index(
   { phoneNumber: 1 },
   {
     unique: true,

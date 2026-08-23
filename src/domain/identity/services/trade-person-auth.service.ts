@@ -30,6 +30,8 @@ import { UserType } from '../enums/user-types.enum';
 import { BaseAuthService } from './base.auth.service';
 import { TradePersonUserRepository } from '../repositories/trade-person-user.repo';
 import { TradePerson } from '../models/trade-person-user.model';
+import { Types } from 'mongoose';
+import { JobTypeRepository } from 'src/domain/jobs/repositories/job-type.repo';
 
 @Injectable()
 export class TradePersonAuthService extends BaseAuthService implements IAuth {
@@ -43,6 +45,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
     private readonly tokenService: TokenService,
     private readonly eventEmitter: EventEmitter2,
     protected readonly configService: ConfigService,
+    private readonly jobTypeRepo: JobTypeRepository,
   ) {
     super(tokenRepo, otpUtil, configService);
   }
@@ -103,6 +106,8 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
       userRole: user.role,
       profileAvatar: user.profileAvatar,
       userType: user.userType,
+      mainTradeCategory: user.mainTradeCategory,
+      location: user.location,
     };
   }
   async completeProfile(_signupPayload: UserSignUpPayLoad): Promise<SignUpResponse> {
@@ -125,13 +130,35 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
     user.password = this.passwordUtil.hashPassword(_signupPayload.password);
     user.profileAvatar = _signupPayload.profileAvatar;
     user.userName = _signupPayload.userName;
-    user.role = Role.User
+    user.role = Role.User;
+    user.locationAddress = _signupPayload.locationAddress
+    
+    if (_signupPayload.location?.coordinates?.length === 2) {
+      user.location = {
+        type: 'Point',
+        coordinates: _signupPayload.location.coordinates,
+      };
+    }
+
+    if (_signupPayload.mainTradeCategory) {
+
+      const jobType = await this.jobTypeRepo.findOne({ _id: new Types.ObjectId(_signupPayload.mainTradeCategory) });
+      if (!jobType) {
+        throw new BadRequestException('mainTradeCategory does not match any valid job category.');
+      }
+
+      user.mainTradeCategory = jobType;
+    } else {
+      user.mainTradeCategory = null;
+    }
+
     user = await this.tradePersonUserRepo.save(user);
 
 
     return {
       userName: user.userName,
       email: user.email,
+      phoneNumber: user.phoneNumber,
       verified: user.isVerified,
       profileAvatar: user.profileAvatar,
     };

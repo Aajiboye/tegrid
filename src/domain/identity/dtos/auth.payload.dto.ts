@@ -1,6 +1,6 @@
 import {
   IsEmail,
-  IsEnum,
+  IsMongoId,
   IsNotEmpty,
   IsNumberString,
   IsOptional,
@@ -11,6 +11,7 @@ import {
 import { Role } from '../enums/roles.enum';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserType } from '../enums/user-types.enum';
+import { JobType } from 'src/domain/jobs/models/job-type.model';
 
 export class LoginPayload {
   @IsNotEmpty()
@@ -41,6 +42,23 @@ export class UserSignUpPayLoad {
   @IsNotEmpty()
   @ApiProperty({ example: 'Password@123' })
   password: string;
+
+
+  @IsOptional()
+  @IsMongoId({ each: false })
+  @ApiPropertyOptional({ example: '64b8f1e2c3d4e5f6a7b8c9d0' })
+  mainTradeCategory?: string;
+
+  @IsOptional()
+  @ApiPropertyOptional({ example: 'Point' })
+  location?: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+
+  @IsString()
+  @ApiPropertyOptional({example: "22, Alfred Awen Avn, Ikeja"})
+  locationAddress?: String;
 }
 
 export class VendorSignUpPayLoad {
@@ -106,20 +124,36 @@ export class VerifyEmailResponse {
 export class LoginResponse {
   @ApiProperty()
   token: string;
+
   @ApiProperty()
   verified: boolean;
+
   @ApiProperty()
   userName: string;
+
   @ApiProperty()
   email: string;
+
   @ApiProperty({ enum: Object.values(Role) })
   userRole: Role;
+
   @ApiProperty({ enum: Object.values(UserType) })
   userType: UserType;
+
   @ApiPropertyOptional()
   profileAvatar: string;
+
   @ApiProperty()
   _id: string;
+  
+  @ApiPropertyOptional()
+  mainTradeCategory?: JobType;
+
+  @ApiPropertyOptional()
+  location?: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
 }
 
 export class SignUpResponse {
@@ -131,6 +165,10 @@ export class SignUpResponse {
   verified: boolean;
   @ApiProperty()
   email: string;
+  @ApiPropertyOptional()
+  phoneNumber?: string;
+  @ApiPropertyOptional()
+  locationAddress?: string;
 }
 
 export class RequestEmailOtp {
@@ -143,7 +181,7 @@ export class UserNameExistenceResponse {
   @ApiProperty({ example: false })
   isTaken: boolean;
 }
-  
+
 export class FirebaseTokenDto {
   @IsString()
   @IsNotEmpty()

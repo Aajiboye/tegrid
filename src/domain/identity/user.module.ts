@@ -58,6 +58,7 @@ import { TradePersonKycProfile, TradePersonKycSchema } from './models/trade-pers
     ]),
     AuditModule,
     SharedModule,
+    forwardRef(() => JobsModule),
   ],
   providers: [
     TokenRepository,

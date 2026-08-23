@@ -20,7 +20,7 @@ import { TradePerson, TradePersonSchema } from '../identity/models/trade-person-
     ],
     providers: [JobTypeRepository, JobRequestRepository, JobsService, TradePersonUserRepository],
     controllers: [JobsController, JobTypesController],
-    exports: [JobsService],
+    exports: [JobsService, JobTypeRepository],
 })
 export class JobsModule implements OnModuleInit {
     constructor(private readonly jobsService: JobsService) { }

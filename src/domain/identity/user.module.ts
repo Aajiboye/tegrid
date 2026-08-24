@@ -41,6 +41,8 @@ import { HomeOwnerRepository } from './repositories/user.repo';
 import { TradePersonKycRepository } from './repositories/trade-person-kyc.repo';
 import { UserTypeGuard } from 'src/guards/user-type.guard';
 import { TradePersonKycProfile, TradePersonKycSchema } from './models/trade-person-kyc.model';
+import { JobsModule } from '../jobs/jobs.module';
+import { JobTypeRepository } from '../jobs/repositories/job-type.repo';
 
 
 @Module({
@@ -86,6 +88,7 @@ import { TradePersonKycProfile, TradePersonKycSchema } from './models/trade-pers
     AuditRepository,
     // pluggable identity verifier (bound to token)
     TradePersonKycRepository,
+    JobTypeRepository,
     {
       provide: IDENTITY_VERIFIER,
       useClass: VerifyMeProvider,

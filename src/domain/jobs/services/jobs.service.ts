@@ -112,8 +112,7 @@ export class JobsService {
       query['visibility'] = 'PUBLIC';
       query['createdBy'] = new Types.ObjectId(user._id);
     }
-    console.log('listForUser user:', user);
-    console.log('listForUser query:', query);
+    
     const paged = await this.jobReqRepo.findPaged(query, pageOptions, undefined, { createdAt: -1 });
     const mapped = new PaginatedResponse<JobRequestResponseDto[]>();
     mapped.page = paged.page;

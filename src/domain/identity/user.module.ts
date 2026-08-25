@@ -62,7 +62,7 @@ import { JobType, JobTypeSchema } from '../jobs/models/job-type.model';
     ]),
     AuditModule,
     SharedModule,
-    forwardRef(() => JobsModule),
+    JobsModule,
   ],
   providers: [
     TokenRepository,

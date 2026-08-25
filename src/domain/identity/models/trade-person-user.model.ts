@@ -8,9 +8,7 @@ import { JobType } from 'src/domain/jobs/models/job-type.model';
 @Schema()
 export class TradePerson {
   _id?: Types.ObjectId;
-  
-    @Prop({ type: Types.ObjectId, ref: 'HomeOwner' })
-    user?: HomeOwner;
+
 
     @Prop({
       trim: true,
@@ -46,6 +44,8 @@ export class TradePerson {
     @Prop({ type: Boolean, default: false })
     isVerified?: boolean;
   
+    @Prop({ type: Types.ObjectId, ref: 'JobType', default: null })
+    mainTradeCategory?: JobType;
     
     @Prop({ type: String, default: null })
     firebaseUid: string;
@@ -58,6 +58,14 @@ export class TradePerson {
   
     @Prop({ type: String, default: null })
     deletionReason?: string;
+
+    location?: {
+      type: 'Point';
+      coordinates: [number, number];
+    };
+
+    @Prop({ type: String, default: null })
+    locationAddress?: String;
 }
 
 export const TradePersonSchema = SchemaFactory.createForClass(TradePerson);

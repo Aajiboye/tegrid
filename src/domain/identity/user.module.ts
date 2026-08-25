@@ -42,7 +42,8 @@ import { TradePersonKycRepository } from './repositories/trade-person-kyc.repo';
 import { UserTypeGuard } from 'src/guards/user-type.guard';
 import { TradePersonKycProfile, TradePersonKycSchema } from './models/trade-person-kyc.model';
 import { JobsModule } from '../jobs/jobs.module';
-import { JobTypeRepository } from '../jobs/repositories/job-type.repo';
+import { JobTypeRepository } from 'src/domain/jobs/repositories/job-type.repo';
+import { JobType, JobTypeSchema } from '../jobs/models/job-type.model';
 
 
 @Module({
@@ -56,6 +57,7 @@ import { JobTypeRepository } from '../jobs/repositories/job-type.repo';
       { name: Admin.name, schema: AdminSchema },
       { name: AuditLog.name, schema: AuditLogSchema },
       { name: TradePersonKycProfile.name, schema: TradePersonKycSchema },
+      { name: JobType.name, schema: JobTypeSchema}
 
     ]),
     AuditModule,

@@ -29,20 +29,22 @@ import { OTPUtilService } from '../../../shared/utils/otp.utils';
 import { PhoneUtilService } from '../../../shared/utils/phone.utils';
 import { ConfigService } from '@nestjs/config';
 import { UserType } from '../enums/user-types.enum';
+import { BaseAuthService } from './base.auth.service';
 
 @Injectable()
-export class AuthService implements IAuth {
+export class AuthService extends BaseAuthService implements IAuth {
   constructor(
     private readonly userRepo: HomeOwnerRepository,
-    private readonly tokenRepo: TokenRepository,
+    protected readonly tokenRepo: TokenRepository,
     private readonly emailUtil: EmailUtilService,
     private readonly passwordUtil: PasswordUtilService,
-    private readonly otpUtil: OTPUtilService,
+    protected readonly otpUtil: OTPUtilService,
     private readonly phoneUtil: PhoneUtilService,
     private readonly tokenService: TokenService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly configService: ConfigService,
+    protected readonly configService: ConfigService,
   ) {
+    super(tokenRepo, otpUtil, configService);
       const appEnv = this.configService.getOrThrow<string>('APP_ENV');
   }
 
@@ -170,23 +172,23 @@ export class AuthService implements IAuth {
     return { verified: user.isVerified };
   }
 
-  async requestOtp(userId: string, tokenType: string): Promise<string> {
-    const { otp, expirationTime } = this.otpUtil.generateOTP();
-    const token = {
-      tokenType,
-      userId: userId,
-      expiresAt: expirationTime,
-      otp,
-    };
-    await this.tokenRepo.updateWithUpsert(
-      {
-        tokenType,
-        userId: userId,
-      },
-      token,
-    );
-    return otp;
-  }
+  // async requestOtp(userId: string, tokenType: string): Promise<string> {
+  //   const { otp, expirationTime } = this.otpUtil.generateOTP();
+  //   const token = {
+  //     tokenType,
+  //     userId: userId,
+  //     expiresAt: expirationTime,
+  //     otp,
+  //   };
+  //   await this.tokenRepo.updateWithUpsert(
+  //     {
+  //       tokenType,
+  //       userId: userId,
+  //     },
+  //     token,
+  //   );
+  //   return otp;
+  // }
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto): Promise<void> {
     const email = this.emailUtil.normalizeEmail(forgotPasswordDto.email);

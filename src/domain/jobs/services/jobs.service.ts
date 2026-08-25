@@ -4,13 +4,14 @@ import { JobRequestRepository } from '../repositories/job-request.repo';
 import { CreateJobRequestDto, JobRequestResponseDto } from '../dtos/job-request.dto';
 import { Types } from 'mongoose';
 import { PageOptions, PaginatedResponse } from 'src/shared/dtos/pagination';
-import { User } from 'src/domain/identity/models/user.model';
-import { UserRepository } from 'src/domain/identity/repositories/user.repo';
+import { HomeOwner } from 'src/domain/identity/models/home-owner-user.model';
 import { UserType } from 'src/domain/identity/enums/user-types.enum';
+import { TradePersonUserRepository } from '../../identity/repositories/trade-person-user.repo';
+import { HomeOwnerKycService } from 'src/domain/identity/services/home-owner-kyc.service';
 
 @Injectable()
 export class JobsService {
-  constructor(private readonly jobTypeRepo: JobTypeRepository, private readonly jobReqRepo: JobRequestRepository, private readonly userRepo: UserRepository) {}
+  constructor(private readonly jobTypeRepo: JobTypeRepository, private readonly jobReqRepo: JobRequestRepository, private readonly tradePersonUserRepo: TradePersonUserRepository, private readonly homeOwnerKycService: HomeOwnerKycService) {}
 
   private mapJobRequestToDto(it: any) {
     return {
@@ -39,8 +40,13 @@ export class JobsService {
     }
   }
 
-  async createJobRequest(user: User, dto: CreateJobRequestDto) {
-    // validate jobType exists
+  async createJobRequest(user: HomeOwner, dto: CreateJobRequestDto) {
+    const userKycProfile = await this.homeOwnerKycService.getKycProfile(user);
+    if(userKycProfile.status !== 'APPROVED') {
+      throw new BadRequestException('User KYC must be verified to create a job request');
+    }
+
+        // validate jobType exists
     const jt = await this.jobTypeRepo.findOne({ _id: dto.jobTypeId });
     if (!jt) throw new NotFoundException('Job type not found');
 
@@ -53,11 +59,10 @@ export class JobsService {
       throw new BadRequestException('tradespersonId cannot be the same as the user');
     }
 
-    if(dto.visibility == "PRIVATE" && !(await this.userRepo.findOne({_id: dto.tradespersonId, userType: UserType.TRADESPERSON}))) {
+    if(dto.visibility == "PRIVATE" && !(await this.tradePersonUserRepo.findOne({_id: dto.tradespersonId, userType: UserType.TRADESPERSON}))) {
       throw new BadRequestException('Invalid tradespersonId');
     }
 
-    console.log('preferredDate:', dto.preferredDate, 'current date:', new Date().toISOString());
     if(dto.preferredDate < new Date().toISOString()) {
       throw new BadRequestException('preferredDate cannot be in the past');
     }
@@ -73,7 +78,7 @@ export class JobsService {
       homeAddress: dto.homeAddress,
       photos: dto.photos || [],
       visibility: dto.visibility || 'PUBLIC',
-      tradespersonId: dto.tradespersonId ? new Types.ObjectId(dto.tradespersonId) : undefined,
+      tradespersonId: dto.tradespersonId && dto.visibility === 'PRIVATE' ? new Types.ObjectId(dto.tradespersonId) : undefined,
       createdBy: new Types.ObjectId(user._id),
     };
 
@@ -96,8 +101,18 @@ export class JobsService {
   }
 
   async listForUser(user: any, pageOptions: PageOptions, search?: string): Promise<PaginatedResponse<JobRequestResponseDto[]>> {
-    const query: any = { createdBy: new Types.ObjectId(user._id) };
+    const query: any = {};
     if (search) query['title'] = { $regex: search, $options: 'i' };
+    if (user.userType === UserType.TRADESPERSON) {
+      query['$or'] = [
+        { visibility: 'PUBLIC' },
+        { visibility: 'PRIVATE', tradespersonId: new Types.ObjectId(user._id) },
+      ];
+    } else {
+      query['visibility'] = 'PUBLIC';
+      query['createdBy'] = new Types.ObjectId(user._id);
+    }
+    
     const paged = await this.jobReqRepo.findPaged(query, pageOptions, undefined, { createdAt: -1 });
     const mapped = new PaginatedResponse<JobRequestResponseDto[]>();
     mapped.page = paged.page;

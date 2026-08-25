@@ -18,7 +18,7 @@ import {
   SignUpResponse,
 } from '../dtos/auth.payload.dto';
 import { ApiTags, ApiResponse } from '@nestjs/swagger';
-import { AuthService } from '../services/auth.service';
+import { AuthService } from '../services/home-owner-auth.service';
 import { adaptResponse } from '../../../shared/adapters/response.adapter';
 
 @ApiTags('Auth')

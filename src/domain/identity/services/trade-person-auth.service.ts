@@ -91,6 +91,7 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
       role: user.role,
       profileAvatar: user.profileAvatar,
       userName: user.userName,
+      userType: user.userType,
     });
 
     user.accessToken = accessToken;

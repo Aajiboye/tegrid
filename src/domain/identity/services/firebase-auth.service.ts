@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as admin from 'firebase-admin';
-import { UserRepository } from '../repositories/user.repo';
+import { HomeOwnerRepository } from '../repositories/user.repo';
 import { TokenService } from '../../../shared/services/token.service';
 import { ConfigService } from '@nestjs/config';
 import { Role } from '../enums/roles.enum';
@@ -10,7 +10,7 @@ export class FirebaseAuthService implements OnModuleInit {
   private readonly logger = new Logger(FirebaseAuthService.name);
 
   constructor(
-    private readonly userRepo: UserRepository,
+    private readonly userRepo: HomeOwnerRepository,
     private readonly tokenService: TokenService,
     private readonly config: ConfigService
   ) {

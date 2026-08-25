@@ -9,14 +9,16 @@ import { JobsController } from './controllers/jobs.controller';
 import { JobTypesController } from './controllers/job-types.controller';
 import { UserModule } from 'src/domain/identity/user.module';
 import { SharedModule } from 'src/shared/shared.module';
+import { TradePersonUserRepository } from '../identity/repositories/trade-person-user.repo';
+import { TradePerson, TradePersonSchema } from '../identity/models/trade-person-user.model';
 
 @Module({
     imports: [
-    MongooseModule.forFeature([{ name: JobType.name, schema: JobTypeSchema }, { name: JobRequest.name, schema: JobRequestSchema }]),
-        forwardRef(() => UserModule),
+    MongooseModule.forFeature([{ name: JobType.name, schema: JobTypeSchema }, { name: JobRequest.name, schema: JobRequestSchema }, {name: TradePerson.name, schema: TradePersonSchema}]),
+        UserModule,
         SharedModule,
     ],
-    providers: [JobTypeRepository, JobRequestRepository, JobsService],
+    providers: [JobTypeRepository, JobRequestRepository, JobsService, TradePersonUserRepository],
     controllers: [JobsController, JobTypesController],
     exports: [JobsService, JobTypeRepository],
 })

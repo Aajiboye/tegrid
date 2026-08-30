@@ -1,4 +1,4 @@
-import { Controller, Get, Post, UseGuards, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards, Body, Param, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { ApiResponse } from '@nestjs/swagger';
 import { adaptResponse } from '../../../shared/adapters/response.adapter';
@@ -11,7 +11,6 @@ import { UserTypeGuard } from 'src/guards/user-type.guard';
 import { RequireUserType } from 'src/decorators/require-user-type.decorator';
 import { UserType } from '../enums/user-types.enum';
 import {
-    TradePersonAddressVerificationDto,
     TradePersonIdentityVerificationDto,
     TradePersonKycRejectionDto,
     TradePersonProfileCreationDto,
@@ -86,16 +85,6 @@ export class TradePersonKycController {
         return adaptResponse(res, "Identity verification completed successfully");
     }
 
-    @Post('/complete-address-verification')
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Complete TradePerson Address Verification' })
-    @ApiResponse({ description: 'Address verified', type: TradePersonProfileDto })
-    async completeAddressVerification(@user() user: TradePerson, @Body() payload: TradePersonAddressVerificationDto) {
-        const { address, addressProofUrl } = payload;
-        const res = await this.tradePersonKycService.completeAddressVerification(user, address, addressProofUrl);
-        return adaptResponse(res, "Address verification completed successfully");
-    }
-
     @Get()
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get TradePerson KYC Profile' })
@@ -154,5 +143,14 @@ export class TradePersonKycController {
         const profile: any = { ...payload };
         const saved = await this.tradePersonKycService.completeBankDetails(user, profile);
         return adaptResponse(saved, "Bank details completed successfully");
+    }
+
+    @Delete('/bank-details/:accountNumber/:bankCode')
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Delete Bank Details' })
+    @ApiResponse({ description: 'Bank details deleted', type: TradePersonProfileDto })
+    async deleteBankDetails(@user() user: TradePerson, @Param('accountNumber') accountNumber: string, @Param('bankCode') bankCode: string) {
+        const res = await this.tradePersonKycService.deleteBankAccount(user, accountNumber);
+        return adaptResponse(res, "Bank details deleted successfully");
     }
 }

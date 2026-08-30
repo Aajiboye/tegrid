@@ -6,28 +6,29 @@ import { TokenRepository } from '../repositories/token.repo';
 import { PasswordUtilService } from '../../../shared/utils/password.util';
 import { OTPUtilService } from '../../../shared/utils/otp.utils';
 import { ConfigService } from '@nestjs/config';
-import { TradePersonIdentityVerificationDto, TradePersonKycStatusResponse, TradePersonProfileDto } from '../dtos/tradeperson.kyc.dto';
+import { BankDetailsDto, HealthAndSafetyComplianceDto, PoliceCharacterReportDto, TradePersonIdentityVerificationDto, TradePersonKycStatusResponse, TradePersonProfileDto } from '../dtos/tradeperson.kyc.dto';
 import { BaseAuthService } from './base.auth.service';
 import mongoose from 'mongoose';
 import { CryptoService } from '../../../shared/services/crypto.service';
 import { Inject } from '@nestjs/common';
 import { IDENTITY_VERIFIER } from '../providers/constants';
 import { IIdentityVerifier } from '../providers/IIdentityVerifier';
-import { TradePersonUserRepository } from '../repositories/trade-person-user.repo';
 import { AuditService } from '../../../shared/services/audit.service';
 import { ITradePersonKyc } from '../interfaces/ITradePersonKyc';
 import { TradePerson } from '../models/trade-person-user.model';
 import { TradePersonKycRepository } from '../repositories/trade-person-kyc.repo';
+import { TradePersonKycProfile } from '../models/trade-person-kyc.model';
+import { WalletService } from 'src/domain/wallet/services/wallet.service';
+import { AccountDto } from 'src/domain/wallet/dtos/wallet.dto';
 
 @Injectable()
 export class TradePersonKycService extends BaseAuthService implements ITradePersonKyc {
     constructor(
         private readonly tradePersonKycRepo: TradePersonKycRepository,
-        private readonly userRepo: TradePersonUserRepository,
-        private readonly passwordUtil: PasswordUtilService,
         private readonly cryptoService: CryptoService,
         @Inject(IDENTITY_VERIFIER) private readonly identityVerifier: IIdentityVerifier,
         private readonly auditService: AuditService,
+        private readonly walletService: WalletService,
         tokenRepo: TokenRepository,
         otpUtil: OTPUtilService,
         configService: ConfigService,
@@ -46,10 +47,11 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
             dob: profile.dob,
             homeAddress: profile.homeAddress,
             healthAndSafetyCertificateUrl: profile.healthAndSafetyCertificateUrl,
+            healthAndSafetyCertificateExpiryDate: profile.healthAndSafetyCertificateExpiryDate,
+            healthAndSafetyCertificateIssueDate: profile.healthAndSafetyCertificateIssueDate,
+            identityType: profile.identityType,
             policeCharacterReportUrl: profile.policeCharacterReportUrl,
-            bankName: profile.bankName,
-            accountNumber: profile.accountNumber,
-            accountName: profile.accountName,
+            bankAccounts: profile.bankAccounts || [],
             mainTradeUrl: profile.mainTrade,
             status: profile.status,
             reasonForRejection: profile.status === 'REJECTED' ? profile.rejectionReason : null,
@@ -69,9 +71,9 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
         const profileItemsList = ["firstName", "lastName", "phoneNumber", "pinHash"];
         const personalInfoList = ["dob", "homeAddress"];
         const identityItemsList = ["identityType", "identityData", "photoIdUrl", "addressProofUrl"];
-        const healthAndSafetyComplianceItemsList = ["healthAndSafetyCertificateUrl"];
+        const healthAndSafetyComplianceItemsList = ["certificateUrl", "issuedDate", "expiryDate"];
         const policeCharacterReportItemsList = ["policeCharacterReportUrl"];
-        const bankDetailsItemsList = ["bankName", "accountNumber", "accountName"];
+        const bankDetailsItemsList = ["bankAccounts"];
         const mainTradeItemsList = ["mainTrade"];
         return {
             profileCompleted: profileItemsList.every(item => !!profile[item]),
@@ -167,23 +169,83 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
         return this.mapProfileToDto(saved);
     }
 
-    async completeHealthAndSafetyCompliance(user: TradePerson, healthAndSafetyComplianceDto: any): Promise<TradePersonProfileDto> {
-        const profile: any = { ...healthAndSafetyComplianceDto };
+    async completeHealthAndSafetyCompliance(user: TradePerson, healthAndSafetyComplianceDto: HealthAndSafetyComplianceDto): Promise<TradePersonProfileDto> {
+        const profile: TradePersonKycProfile = {};
+        this.validateHSDates(healthAndSafetyComplianceDto);
+        profile.healthAndSafetyCertificateIssueDate = healthAndSafetyComplianceDto.issuedDate;
+        profile.healthAndSafetyCertificateExpiryDate = healthAndSafetyComplianceDto.expiryDate;
+        profile.healthAndSafetyCertificateUrl = healthAndSafetyComplianceDto.certificateUrl;
+
         const saved = await this.tradePersonKycRepo.updateWithUpsert({ user: new mongoose.Types.ObjectId(user._id) }, profile);
         return this.mapProfileToDto(saved);
     }
 
-    async completePoliceCharacterReport(user: TradePerson, policeCharacterReportDto: any): Promise<any> {
-        const profile: any = { ...policeCharacterReportDto };
+    private validateHSDates(dto: HealthAndSafetyComplianceDto) {
+        const expiryDate = new Date(dto.expiryDate);
+        const issuedDate = new Date(dto.issuedDate);
+        if (isNaN(expiryDate.getTime())) {
+            throw new BadRequestException('Invalid expiry date format');
+        }
+
+        if (isNaN(issuedDate.getTime())) {
+            throw new BadRequestException('Invalid issued date format');
+        }
+
+        if (issuedDate > new Date()) {
+            throw new BadRequestException('Health and Safety Certificate issued date cannot be in the future');
+        }
+
+        if (expiryDate < new Date()) {
+            throw new BadRequestException('Health and Safety Certificate has expired');
+        }
+    }
+
+    async completePoliceCharacterReport(user: TradePerson, policeCharacterReportDto: PoliceCharacterReportDto): Promise<any> {
+        const profile: TradePersonKycProfile = {};
+        profile.policeCharacterReportUrl = policeCharacterReportDto.certificateUrl;
         const saved = await this.tradePersonKycRepo.updateWithUpsert({ user: new mongoose.Types.ObjectId(user._id) }, profile);
         return this.mapProfileToDto(saved);
     }
 
-    async completeBankDetails(user: TradePerson, bankDetailsDto: any): Promise<any> {
-        const profile: any = { ...bankDetailsDto };
+    async completeBankDetails(user: TradePerson, bankDetailsDto: BankDetailsDto): Promise<any> {
+        const profile: TradePersonKycProfile = {};
         // do bank account verification here
-        
+        const accountDetails = await this.walletService.resolveAccountName(bankDetailsDto.accountNumber, bankDetailsDto.bankCode, false);
+        const existingProfile = await this.tradePersonKycRepo.findOne({ user: new mongoose.Types.ObjectId(user._id) });
+        if (existingProfile && existingProfile.bankAccounts && existingProfile.bankAccounts.length > 0) {
+            // ensure no duplicate bank accounts are added
+            const duplicate = existingProfile.bankAccounts.find(acc => acc.accountNumber === accountDetails.accountNumber && acc.bankCode === accountDetails.bankCode);
+            if (duplicate) {
+                throw new BadRequestException('This bank account is already linked to your profile');
+            }
+            existingProfile.bankAccounts.push({
+                accountName: accountDetails.accountName,
+                bankCode: accountDetails.bankCode,
+                accountNumber: accountDetails.accountNumber
+            });
+            const saved = await this.tradePersonKycRepo.updateWithUpsert({ user: new mongoose.Types.ObjectId(user._id) }, existingProfile);
+            return this.mapProfileToDto(saved);
+        }
+        profile.bankAccounts = [{
+            accountName: accountDetails.accountName,
+            bankCode: accountDetails.bankCode,
+            accountNumber: accountDetails.accountNumber
+        }];
         const saved = await this.tradePersonKycRepo.updateWithUpsert({ user: new mongoose.Types.ObjectId(user._id) }, profile);
+        return this.mapProfileToDto(saved);
+    }
+
+    async deleteBankAccount(user: TradePerson, accountNumber: string): Promise<any> {
+        const existingProfile = await this.tradePersonKycRepo.findOne({ user: new mongoose.Types.ObjectId(user._id) });
+        if (!existingProfile || !existingProfile.bankAccounts || existingProfile.bankAccounts.length === 0) {
+            throw new BadRequestException('No bank accounts found for this user');
+        }
+        const updatedBankAccounts = existingProfile.bankAccounts.filter(acc => acc.accountNumber !== accountNumber);
+        if (updatedBankAccounts.length === existingProfile.bankAccounts.length) {
+            throw new BadRequestException('Bank account not found');
+        }
+        existingProfile.bankAccounts = updatedBankAccounts;
+        const saved = await this.tradePersonKycRepo.updateWithUpsert({ user: new mongoose.Types.ObjectId(user._id) }, existingProfile);
         return this.mapProfileToDto(saved);
     }
 

@@ -10,6 +10,8 @@ import { TokenService } from './shared/services/token.service';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { JwtModule } from '@nestjs/jwt';
 import { CryptoService } from './shared/services/crypto.service';
+import { WalletModule } from './domain/wallet/wallet.module';
+import { CompetencyAssessmentModule } from './domain/competency-assessment/competency-assessment.module';
 
 const configService = new ConfigService();
 
@@ -30,6 +32,8 @@ const configService = new ConfigService();
     }),
     UserModule,
     JobsModule,
+    WalletModule,
+    CompetencyAssessmentModule
   ],
   controllers: [AppController],
   providers: [AppService, TokenService, CryptoService],

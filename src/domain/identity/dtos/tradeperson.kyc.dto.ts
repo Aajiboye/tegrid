@@ -3,63 +3,73 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class TradePersonProfileDto {
   _id: string;
-    @ApiProperty()
-    firstName?: string;
-    @ApiProperty()
-    lastName?: string;
-    @ApiPropertyOptional()
-    middleName?: string;
-    @ApiPropertyOptional()
-    phoneNumber?: string;
-    @ApiPropertyOptional({ description: 'URL to uploaded photo ID' })
-    photoIdUrl?: string;
-    @ApiPropertyOptional()
-    addressProofUrl?: string;
-    @ApiPropertyOptional()
-    dob?: string;
-    @ApiPropertyOptional()
-    homeAddress?: string;
-    @ApiPropertyOptional()    
-    healthAndSafetyCertificateUrl?: string;
-    @ApiPropertyOptional()
-    policeCharacterReportUrl?: string;
-    @ApiPropertyOptional()
-    bankName?: string;
-    @ApiPropertyOptional()
-    bankAccountNumber?: string;
-    @ApiPropertyOptional()
-    accountName?: string;
-    @ApiPropertyOptional()
-    accountNumber?: string;
-    @ApiPropertyOptional()
-    mainTradeUrl?: string;
-    @ApiPropertyOptional({ enum: ['PENDING', 'APPROVED', 'REJECTED'] })
-    status?: 'PENDING' | 'APPROVED' | 'REJECTED';
-    @ApiPropertyOptional({ description: 'Reason for rejection when status is REJECTED' })
-    reasonForRejection?: string;
+  @ApiProperty()
+  
+  firstName?: string;
+  @ApiProperty()
+  lastName?: string;
+  @ApiPropertyOptional()
+  middleName?: string;
+  @ApiPropertyOptional()
+  phoneNumber?: string;
+  @ApiPropertyOptional({ description: 'URL to uploaded photo ID' })
+  photoIdUrl?: string;
+  @ApiPropertyOptional()
+  addressProofUrl?: string;
+  @ApiPropertyOptional()
+  dob?: string;
+  @ApiPropertyOptional()
+  homeAddress?: string;
+
+  @ApiPropertyOptional()
+  healthAndSafetyCertificateUrl?: string;
+
+  @ApiPropertyOptional()
+  healthAndSafetyCertificateExpiryDate?: string;
+
+  @ApiPropertyOptional()
+  healthAndSafetyCertificateIssueDate?: string;
+
+  @ApiPropertyOptional()
+  policeCharacterReportUrl?: string;
+  @ApiPropertyOptional()
+  identityType?: string;
+
+  bankAccounts?: {
+    accountNumber: string;
+    accountName: string;
+    bankCode: string;
+  }[];
+
+  @ApiPropertyOptional()
+  mainTradeUrl?: string;
+  @ApiPropertyOptional({ enum: ['PENDING', 'APPROVED', 'REJECTED'] })
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  @ApiPropertyOptional({ description: 'Reason for rejection when status is REJECTED' })
+  reasonForRejection?: string;
 }
 
 export class TradePersonProfileCreationDto {
-   @IsString()
-    @ApiProperty({ example: 'John' })
-    firstName: string;
+  @IsString()
+  @ApiProperty({ example: 'John' })
+  firstName: string;
 
-    @IsString()
-    @ApiProperty({ example: 'Doe' })
-    lastName: string;
+  @IsString()
+  @ApiProperty({ example: 'Doe' })
+  lastName: string;
 
-    @IsString()
-    @IsOptional()
-    @ApiPropertyOptional()
-    middleName?: string;
+  @IsString()
+  @IsOptional()
+  @ApiPropertyOptional()
+  middleName?: string;
 
-    @IsString()
-    @ApiProperty({ example: '+2348012345678' })
-    phoneNumber: string;
+  @IsString()
+  @ApiProperty({ example: '+2348012345678' })
+  phoneNumber: string;
 
-    @IsString()
-    @ApiProperty({ description: 'Local PIN for verification; stored as hash' })
-    pin: string;
+  @IsString()
+  @ApiProperty({ description: 'Local PIN for verification; stored as hash' })
+  pin: string;
 }
 
 export class TradePersonIdentityVerificationDto {
@@ -125,7 +135,7 @@ export class TradePersonKycStatusResponse {
   mainTradeCompleted: boolean;
 }
 
-export class PersonalInformationDto { 
+export class PersonalInformationDto {
   @IsString()
   @ApiProperty({ example: '1990-01-01' })
   dob: string;
@@ -135,7 +145,7 @@ export class PersonalInformationDto {
   homeAddress: string;
 }
 
-export class HealthAndSafetyComplianceDto { 
+export class HealthAndSafetyComplianceDto {
   @IsString()
   @ApiProperty({ example: 'https://example.com/certificate.pdf' })
   certificateUrl: string;
@@ -149,13 +159,13 @@ export class HealthAndSafetyComplianceDto {
   issuedDate: string;
 }
 
-export class PoliceCharacterReportDto { 
+export class PoliceCharacterReportDto {
   @IsString()
   @ApiProperty({ example: 'https://example.com/police-report.pdf' })
   certificateUrl: string;
 }
 
-export class BankDetailsDto { 
+export class BankDetailsDto {
   @IsString()
   @ApiProperty({ example: '1234567890' })
   accountNumber: string;

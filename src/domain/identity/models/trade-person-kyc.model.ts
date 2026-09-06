@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
 import { TradePerson } from './trade-person-user.model';
+import { BankAccounts } from '../dtos/kyc.dto';
 
 @Schema()
 export class TradePersonKycProfile {
@@ -47,16 +48,16 @@ export class TradePersonKycProfile {
     healthAndSafetyCertificateUrl?: string;
 
     @Prop({ type: String})
+    healthAndSafetyCertificateExpiryDate?: string;
+
+    @Prop({ type: String})
+    healthAndSafetyCertificateIssueDate?: string;
+
+    @Prop({ type: String})
     policeCharacterReportUrl?: string;
 
-    @Prop({ type: String})
-    bankName?: string;
-
-    @Prop({ type: String})
-    accountNumber?: string;
-
-    @Prop({ type: String})
-    accountName?: string;
+    @Prop({ type: BankAccounts, default: [] })
+    bankAccounts?: BankAccounts[];
 
     @Prop({ type: String})
     mainTrade?: string;

@@ -44,6 +44,7 @@ import { TradePersonKycProfile, TradePersonKycSchema } from './models/trade-pers
 import { JobsModule } from '../jobs/jobs.module';
 import { JobTypeRepository } from 'src/domain/jobs/repositories/job-type.repo';
 import { JobType, JobTypeSchema } from '../jobs/models/job-type.model';
+import { WalletModule } from '../wallet/wallet.module';
 
 
 @Module({
@@ -63,6 +64,7 @@ import { JobType, JobTypeSchema } from '../jobs/models/job-type.model';
     AuditModule,
     SharedModule,
     JobsModule,
+    WalletModule,
   ],
   providers: [
     TokenRepository,

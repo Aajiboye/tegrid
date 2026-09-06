@@ -47,3 +47,14 @@ export class ProfileDto{
     @ApiPropertyOptional({ description: 'Reason for rejection when status is REJECTED' })
     reasonForRejection?: string;
 }
+
+export class BankAccounts {
+    @ApiProperty({ example: '1234567890' })
+    accountNumber: string;
+
+    @ApiProperty({ example: 'John Doe' })
+    accountName: string;
+
+    @ApiProperty({ example: 'XYZ Bank' })
+    bankCode: string;
+}

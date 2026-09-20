@@ -41,10 +41,16 @@ import { HomeOwnerRepository } from './repositories/user.repo';
 import { TradePersonKycRepository } from './repositories/trade-person-kyc.repo';
 import { UserTypeGuard } from 'src/guards/user-type.guard';
 import { TradePersonKycProfile, TradePersonKycSchema } from './models/trade-person-kyc.model';
+import { TradePersonProfile, TradePersonProfileSchema } from './models/trade-person-profile.model';
+import { TradePersonProfileRepository } from './repositories/trade-person-profile.repo';
+import { TradePersonProfileService } from './services/trade-person-profile.service';
+import { TradePersonProfileController } from './controllers/trade-person-profile.controller';
 import { JobsModule } from '../jobs/jobs.module';
 import { JobTypeRepository } from 'src/domain/jobs/repositories/job-type.repo';
 import { JobType, JobTypeSchema } from '../jobs/models/job-type.model';
 import { WalletModule } from '../wallet/wallet.module';
+import { CompetencyTest, CompetencyTestSchema } from '../competency-assessment/models/competency-tests';
+import { CompetencyTestRepository } from '../competency-assessment/repositories/competency-test.repo';
 
 
 @Module({
@@ -58,7 +64,9 @@ import { WalletModule } from '../wallet/wallet.module';
       { name: Admin.name, schema: AdminSchema },
       { name: AuditLog.name, schema: AuditLogSchema },
       { name: TradePersonKycProfile.name, schema: TradePersonKycSchema },
-      { name: JobType.name, schema: JobTypeSchema}
+  { name: TradePersonProfile.name, schema: TradePersonProfileSchema },
+  { name: JobType.name, schema: JobTypeSchema },
+  { name: CompetencyTest.name, schema: CompetencyTestSchema }
 
     ]),
     AuditModule,
@@ -93,6 +101,9 @@ import { WalletModule } from '../wallet/wallet.module';
     // pluggable identity verifier (bound to token)
     TradePersonKycRepository,
     JobTypeRepository,
+    TradePersonProfileRepository,
+    TradePersonProfileService,
+    CompetencyTestRepository,
     {
       provide: IDENTITY_VERIFIER,
       useClass: VerifyMeProvider,
@@ -103,6 +114,7 @@ import { WalletModule } from '../wallet/wallet.module';
     FirebaseAuthController,
     HomeOwnerKycController,
     TradePersonKycController,
+  TradePersonProfileController,
     AdminAuthController,
     (require('./controllers/trade-person-auth.controller').TradePersonAuthController),
   ],

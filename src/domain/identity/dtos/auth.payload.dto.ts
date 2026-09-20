@@ -188,3 +188,26 @@ export class FirebaseTokenDto {
   @ApiProperty({ description: 'Firebase ID token' })
   idToken: string;
 }
+
+export class AuthProfileResponseDto {
+  @ApiProperty()
+  _id: string;
+
+  @ApiProperty()
+  userName?: string;
+
+  @ApiProperty()
+  phoneNumber?: string;
+
+  @ApiProperty()
+  email?: string;
+
+  @ApiProperty({ enum: Object.values(UserType) })
+  userType: UserType;
+
+  @ApiPropertyOptional()
+  profileAvatar?: string;
+
+  @ApiProperty()
+  verified: boolean;
+}

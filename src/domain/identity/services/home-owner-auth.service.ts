@@ -15,6 +15,7 @@ import {
   UserSignUpPayLoad,
   UserNameExistenceResponse,
   ForgotPasswordDto,
+  AuthProfileResponseDto,
 } from '../dtos/auth.payload.dto';
 import { HomeOwnerRepository } from '../repositories/user.repo';
 import { TokenService } from '../../../shared/services/token.service';
@@ -30,11 +31,14 @@ import { PhoneUtilService } from '../../../shared/utils/phone.utils';
 import { ConfigService } from '@nestjs/config';
 import { UserType } from '../enums/user-types.enum';
 import { BaseAuthService } from './base.auth.service';
+import { HomeOwnerKycRepository } from '../repositories/homeowner-kyc.repo';
+import { Types } from 'mongoose';
 
 @Injectable()
 export class AuthService extends BaseAuthService implements IAuth {
   constructor(
     private readonly userRepo: HomeOwnerRepository,
+    private readonly homeOwnerKycRepo: HomeOwnerKycRepository,
     protected readonly tokenRepo: TokenRepository,
     private readonly emailUtil: EmailUtilService,
     private readonly passwordUtil: PasswordUtilService,
@@ -264,5 +268,18 @@ export class AuthService extends BaseAuthService implements IAuth {
       subject: 'TradeExpertsGrid Phone Verification',
     });
     return;
+  }
+
+  async getProfile(user: HomeOwner): Promise<AuthProfileResponseDto> {
+    const userProfile = await this.userRepo.findOne({ _id: new Types.ObjectId(user._id) });
+    if (!userProfile) throw new NotFoundException('User profile not found');
+    return {
+      _id: userProfile._id.toString(),
+      userName: userProfile.userName || '',
+      phoneNumber: userProfile.phoneNumber || '',
+      userType: userProfile.userType,
+      profileAvatar: userProfile.profileAvatar,
+      verified: userProfile.isVerified,
+    };
   }
 }

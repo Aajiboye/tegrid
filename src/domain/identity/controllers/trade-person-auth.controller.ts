@@ -1,8 +1,11 @@
 import { Controller, Post, Body, Get, UseGuards, HttpStatus, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { adaptResponse } from '../../../shared/adapters/response.adapter';
-import { ForgotPasswordDto, LoginPayload, LoginResponse, RequestEmailOtp, ResetPasswordPayload, SignUpResponse, UserSignUpPayLoad, VerifyEmailPayload, VerifyEmailResponse } from '../dtos/auth.payload.dto';
+import { ForgotPasswordDto, LoginPayload, LoginResponse, RequestEmailOtp, ResetPasswordPayload, SignUpResponse, UserSignUpPayLoad, VerifyEmailPayload, VerifyEmailResponse, AuthProfileResponseDto } from '../dtos/auth.payload.dto';
 import { TradePersonAuthService } from '../services/trade-person-auth.service';
+import { AuthGuard } from 'src/guards/auth.guard';
+import { user } from 'src/decorators/user.decorator';
+import { TradePerson } from '../models/trade-person-user.model';
 
 @ApiTags('TradePerson Onboarding')
 @Controller('v1/tradeperson/auth')
@@ -66,5 +69,14 @@ export class TradePersonAuthController {
         @Body() payload: ResetPasswordPayload,
     ) {
         return adaptResponse(await this.service.resetPassword(payload), "Password reset successful");
+    }
+
+    @Get('profile')
+    @ApiBearerAuth()
+    @UseGuards(AuthGuard)
+    @ApiOperation({ summary: 'Get authenticated TradePerson profile' })
+    @ApiResponse({ type: AuthProfileResponseDto })
+    async getProfile(@user() user: TradePerson) {
+        return adaptResponse(await this.service.getProfile(user));
     }
 }

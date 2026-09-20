@@ -15,6 +15,7 @@ import {
   UserSignUpPayLoad,
   UserNameExistenceResponse,
   ForgotPasswordDto,
+  AuthProfileResponseDto,
 } from '../dtos/auth.payload.dto';
 import { TokenService } from '../../../shared/services/token.service';
 import { DuplicateUserError } from '../../../shared/errors';
@@ -32,11 +33,13 @@ import { TradePersonUserRepository } from '../repositories/trade-person-user.rep
 import { TradePerson } from '../models/trade-person-user.model';
 import { Types } from 'mongoose';
 import { JobTypeRepository } from 'src/domain/jobs/repositories/job-type.repo';
+import { TradePersonKycRepository } from '../repositories/trade-person-kyc.repo';
 
 @Injectable()
 export class TradePersonAuthService extends BaseAuthService implements IAuth {
   constructor(
     private readonly tradePersonUserRepo: TradePersonUserRepository,
+    private readonly tradePersonKycRepo: TradePersonKycRepository,
     protected readonly tokenRepo: TokenRepository,
     private readonly emailUtil: EmailUtilService,
     private readonly passwordUtil: PasswordUtilService,
@@ -275,5 +278,19 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
     this.tokenRepo.deleteById(token._id.toString());
 
     return { verified: tradePerson.isVerified };
+  }
+
+  async getProfile(user: TradePerson): Promise<AuthProfileResponseDto> {
+    const userProfile = await this.tradePersonUserRepo.findOne({ _id: new Types.ObjectId(user._id) });
+    if (!userProfile) throw new NotFoundException('User profile not found');
+    return {
+      _id: userProfile._id.toString(),
+      userName: userProfile.userName,
+      email: userProfile.email,
+      phoneNumber: userProfile?.phoneNumber || '',
+      userType: userProfile.userType,
+      profileAvatar: userProfile.profileAvatar,
+      verified: userProfile.isVerified,
+    };
   }
 }

@@ -3,8 +3,10 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Get,
   Body,
   Param,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ForgotPasswordDto,
@@ -16,10 +18,14 @@ import {
   LoginResponse,
   VerifyEmailResponse,
   SignUpResponse,
+  AuthProfileResponseDto,
 } from '../dtos/auth.payload.dto';
-import { ApiTags, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiResponse, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthService } from '../services/home-owner-auth.service';
 import { adaptResponse } from '../../../shared/adapters/response.adapter';
+import { AuthGuard } from 'src/guards/auth.guard';
+import { user } from 'src/decorators/user.decorator';
+import { HomeOwner } from '../models/home-owner-user.model';
 
 @ApiTags('Auth')
 @Controller('v1/auth')
@@ -81,5 +87,14 @@ export class AuthController {
     @Body() payload: ResetPasswordPayload,
   ) {
     return adaptResponse(await this.service.resetPassword(payload), "Password reset successful");
+  }
+
+  @Get('profile')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Get authenticated HomeOwner profile' })
+  @ApiResponse({ type: AuthProfileResponseDto })
+  async getProfile(@user() user: HomeOwner) {
+    return adaptResponse(await this.service.getProfile(user));
   }
 }

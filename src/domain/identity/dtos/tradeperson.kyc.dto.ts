@@ -35,6 +35,10 @@ export class TradePersonProfileDto {
   @ApiPropertyOptional()
   identityType?: string;
 
+  @ApiPropertyOptional({
+    type: () => [BankAccountDto],
+    description: 'List of verified bank accounts linked during KYC',
+  })
   bankAccounts?: {
     accountNumber: string;
     accountName: string;
@@ -175,4 +179,19 @@ export class BankDetailsDto {
   bankCode: string;
 }
 
-export class MainTradeDto { }
+export class BankAccountDto {
+  @ApiProperty({ example: '1234567890' })
+  accountNumber: string;
+
+  @ApiProperty({ example: 'JOHN DOE' })
+  accountName: string;
+
+  @ApiProperty({ example: '058' })
+  bankCode: string;
+}
+
+export class MainTradeDto {
+  @IsString()
+  @ApiProperty({ example: 'Electrician' })
+  mainTrade: string;
+}

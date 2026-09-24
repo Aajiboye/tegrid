@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TradePerson } from '../models/trade-person-user.model';
+import { UserType } from '../enums/user-types.enum';
 import { IsArray, IsPositive, IsString } from 'class-validator';
 
 export class TradePersonProfileScheduleEntry {
@@ -174,4 +175,47 @@ export interface ITradePersonProfile {
     getProfile(
         tradePerson: TradePerson,
     ): Promise<TradePersonProfileAggregateData>;
+}
+
+export class TradePersonMainTradeCategoryDto {
+    @ApiProperty()
+    _id: string;
+
+    @ApiProperty()
+    name: string;
+}
+
+export class TradePersonListingItemDto {
+    @ApiProperty()
+    _id: string;
+
+    @ApiProperty()
+    firstName: string;
+
+    @ApiProperty()
+    lastName: string;
+
+    @ApiProperty()
+    userName: string;
+
+    @ApiProperty()
+    phoneNumber: string;
+
+    @ApiPropertyOptional()
+    profileAvatar?: string;
+
+    @ApiProperty({ enum: Object.values(UserType) })
+    userType: UserType;
+
+    @ApiPropertyOptional({ type: TradePersonMainTradeCategoryDto })
+    mainTradeCategory?: TradePersonMainTradeCategoryDto;
+
+    @ApiPropertyOptional()
+    yearsOfExperience?: number;
+
+    @ApiPropertyOptional()
+    serviceDescription?: string;
+
+    @ApiProperty()
+    kycStatus: string;
 }

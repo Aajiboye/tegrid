@@ -45,7 +45,7 @@ export class HomeOwnerKycProfile {
     @Prop({ type: String, default: 'PENDING' })
     status?: 'PENDING' | 'APPROVED' | 'REJECTED';
 
-    @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+    @Prop({ type: Types.ObjectId, ref: 'Admin', default: null })
     approvedBy?: any;
 
     @Prop({ type: Date, default: null })

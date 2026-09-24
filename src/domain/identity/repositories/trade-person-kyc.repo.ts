@@ -42,4 +42,10 @@ export class TradePersonKycRepository {
   async rejectById(id: string, approverId: string, reason: string) {
     return this.model.findByIdAndUpdate(id, { status: 'REJECTED', approvedBy: approverId, approvedAt: new Date(), rejectionReason: reason }, { new: true });
   }
+
+  async findApprovedProfiles(): Promise<TradePersonKycProfile[]> {
+    return this.model.find({ status: 'APPROVED' })
+      .populate('user')
+      .lean();
+  }
 }

@@ -40,10 +40,10 @@ export class JobRequest {
   @Prop({ type: String, enum: JobVisibility, default: JobVisibility.PUBLIC })
   visibility: JobVisibility;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: false })
+  @Prop({ type: Types.ObjectId, ref: 'TradePerson', required: false })
   tradespersonId?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'HomeOwner', required: true })
   createdBy: Types.ObjectId;
 }
 

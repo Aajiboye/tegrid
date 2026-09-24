@@ -1,4 +1,4 @@
-import { Controller, Get, Post, UseGuards, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { ApiResponse } from '@nestjs/swagger';
 import { adaptResponse } from '../../../shared/adapters/response.adapter';
@@ -7,7 +7,6 @@ import { BaseKycService } from '../services/base-kyc.service';
 import { user } from 'src/decorators/user.decorator';
 import { HomeOwner } from '../models/home-owner-user.model';
 import { AuthGuard } from 'src/guards/auth.guard';
-import { RoleGuard } from 'src/guards/role.guard';
 import { RequireUserType } from '../../../decorators/require-user-type.decorator';
 import { UserType } from '../enums/user-types.enum';
 import {
@@ -106,26 +105,5 @@ export class HomeOwnerKycController {
     async getProfile(@user() user: HomeOwner) {
         const res = await this.homeOwnerKycService.getKycProfile(user);
         return adaptResponse(res);
-    }
-
-    // Admin endpoints
-    @Post('/admin/:id/approve')
-    @ApiBearerAuth()
-    @UseGuards(AuthGuard, RoleGuard)
-    @ApiOperation({ summary: 'Admin: Approve a Home Owner KYC' })
-    @ApiResponse({ description: 'KYC approved', type: HomeOwnerProfileDto })
-    async approveKyc(@user() user: HomeOwner, @Param('id') id: string) {
-        const res = await this.homeOwnerKycService.approveKyc(id, user._id.toString());
-        return adaptResponse(res, 'KYC approved');
-    }
-
-    @Post('/admin/:id/reject')
-    @ApiBearerAuth()
-    @UseGuards(AuthGuard, RoleGuard)
-    @ApiOperation({ summary: 'Admin: Reject a Home Owner KYC' })
-    @ApiResponse({ description: 'KYC rejected', type: HomeOwnerProfileDto })
-    async rejectKyc(@user() user: HomeOwner, @Param('id') id: string, @Body() payload: HomeOwnerKycRejectionDto) {
-        const res = await this.homeOwnerKycService.rejectKyc(id, user._id.toString(), payload.reason);
-        return adaptResponse(res, 'KYC rejected');
     }
 }

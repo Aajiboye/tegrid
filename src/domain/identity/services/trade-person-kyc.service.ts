@@ -254,4 +254,28 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
         const saved = await this.tradePersonKycRepo.updateWithUpsert({ user: new mongoose.Types.ObjectId(user._id) }, profile);
         return this.mapProfileToDto(saved);
     }
+
+    async listApprovedTradePersons(): Promise<any[]> {
+        const approvedProfiles = await this.tradePersonKycRepo.findApprovedProfiles();
+        return approvedProfiles.map((profile: any) => {
+            const user = profile.user;
+            const mainTrade = user?.mainTradeCategory;
+            return {
+                _id: user?._id?.toString(),
+                firstName: profile.firstName || '',
+                lastName: profile.lastName || '',
+                userName: user?.userName || '',
+                phoneNumber: user?.phoneNumber || '',
+                profileAvatar: user?.profileAvatar || '',
+                userType: user?.userType,
+                mainTradeCategory: mainTrade?._id ? {
+                    _id: mainTrade._id.toString(),
+                    name: mainTrade.name,
+                } : mainTrade?.toString?.() || null,
+                yearsOfExperience: profile.yearsOfExperience,
+                serviceDescription: profile.serviceDescription,
+                kycStatus: profile.status,
+            };
+        });
+    }
 }

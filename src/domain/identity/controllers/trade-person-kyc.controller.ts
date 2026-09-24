@@ -94,27 +94,6 @@ export class TradePersonKycController {
         return adaptResponse(res);
     }
 
-    // Admin endpoints
-    @Post('/admin/:id/approve')
-    @ApiBearerAuth()
-    @UseGuards(AuthGuard, RoleGuard)
-    @ApiOperation({ summary: 'Admin: Approve a TradePerson KYC' })
-    @ApiResponse({ description: 'KYC approved', type: TradePersonProfileDto })
-    async approveKyc(@user() user: TradePerson, @Param('id') id: string) {
-        const res = await this.tradePersonKycService.approveKyc(id, user._id.toString());
-        return adaptResponse(res, 'KYC approved');
-    }
-
-    @Post('/admin/:id/reject')
-    @ApiBearerAuth()
-    @UseGuards(AuthGuard, RoleGuard)
-    @ApiOperation({ summary: 'Admin: Reject a TradePerson KYC' })
-    @ApiResponse({ description: 'KYC rejected', type: TradePersonProfileDto })
-    async rejectKyc(@user() user: TradePerson, @Param('id') id: string, @Body() payload: TradePersonKycRejectionDto) {
-        const res = await this.tradePersonKycService.rejectKyc(id, user._id.toString(), payload.reason);
-        return adaptResponse(res, 'KYC rejected');
-    }
-
     @Post('/complete-health-safety-compliance')
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Complete Health and Safety Compliance' })

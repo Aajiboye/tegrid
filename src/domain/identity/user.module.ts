@@ -51,6 +51,8 @@ import { JobType, JobTypeSchema } from '../jobs/models/job-type.model';
 import { WalletModule } from '../wallet/wallet.module';
 import { CompetencyTest, CompetencyTestSchema } from '../competency-assessment/models/competency-tests';
 import { CompetencyTestRepository } from '../competency-assessment/repositories/competency-test.repo';
+import { AdminKycController } from './controllers/admin-kyc.controller';
+import { TradePersonListingController } from './controllers/trade-person-listing.controller';
 
 
 @Module({
@@ -114,8 +116,10 @@ import { CompetencyTestRepository } from '../competency-assessment/repositories/
     FirebaseAuthController,
     HomeOwnerKycController,
     TradePersonKycController,
-  TradePersonProfileController,
+    TradePersonProfileController,
+    TradePersonListingController,
     AdminAuthController,
+    AdminKycController,
     (require('./controllers/trade-person-auth.controller').TradePersonAuthController),
   ],
   exports: [

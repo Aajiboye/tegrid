@@ -8,10 +8,17 @@ import { HomeOwner } from 'src/domain/identity/models/home-owner-user.model';
 import { UserType } from 'src/domain/identity/enums/user-types.enum';
 import { TradePersonUserRepository } from '../../identity/repositories/trade-person-user.repo';
 import { HomeOwnerKycService } from 'src/domain/identity/services/home-owner-kyc.service';
+import { TradePersonKycService } from 'src/domain/identity/services/trade-person-kyc.service';
 
 @Injectable()
 export class JobsService {
-  constructor(private readonly jobTypeRepo: JobTypeRepository, private readonly jobReqRepo: JobRequestRepository, private readonly tradePersonUserRepo: TradePersonUserRepository, private readonly homeOwnerKycService: HomeOwnerKycService) {}
+  constructor(
+    private readonly jobTypeRepo: JobTypeRepository,
+    private readonly jobReqRepo: JobRequestRepository,
+    private readonly tradePersonUserRepo: TradePersonUserRepository,
+    private readonly homeOwnerKycService: HomeOwnerKycService,
+    private readonly tradePersonKycService: TradePersonKycService,
+  ) {}
 
   private mapJobRequestToDto(it: any) {
     return {
@@ -59,8 +66,20 @@ export class JobsService {
       throw new BadRequestException('tradespersonId cannot be the same as the user');
     }
 
-    if(dto.visibility == "PRIVATE" && !(await this.tradePersonUserRepo.findOne({_id: dto.tradespersonId, userType: UserType.TRADESPERSON}))) {
-      throw new BadRequestException('Invalid tradespersonId');
+    if (dto.visibility === 'PRIVATE' && dto.tradespersonId) {
+      const tradePerson = await this.tradePersonUserRepo.findById(dto.tradespersonId);
+      if (!tradePerson) {
+        throw new BadRequestException('Invalid tradespersonId');
+      }
+      const kycStatus = await this.tradePersonKycService.getKycStatus(tradePerson);
+      const isKycComplete = Object.values(kycStatus).every(Boolean);
+      if (!isKycComplete) {
+        throw new BadRequestException('Tradesperson KYC is incomplete. Cannot assign private job.');
+      }
+      const kycProfile = await this.tradePersonKycService.getKycProfile(tradePerson);
+      if (kycProfile.status !== 'APPROVED') {
+        throw new BadRequestException('Tradesperson KYC is not approved. Cannot assign private job.');
+      }
     }
 
     if(dto.preferredDate < new Date().toISOString()) {

@@ -76,6 +76,6 @@ export class TradePersonKycProfile {
     rejectionReason?: string;
 }
 
-export const TradePersonKycSchema = SchemaFactory.createForClass(TradePersonKycProfile);
+export const TradePersonKycProfileSchema = SchemaFactory.createForClass(TradePersonKycProfile);
 
-TradePersonKycSchema.set('timestamps', true);
+TradePersonKycProfileSchema.set('timestamps', true);

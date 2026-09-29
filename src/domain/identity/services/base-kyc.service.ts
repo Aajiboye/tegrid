@@ -55,6 +55,7 @@ export class BaseKycService extends BaseAuthService implements IBaseKyc {
     async completeProfile(user: HomeOwner|TradePerson, profileData: ProfileCreationDto | TradePersonProfileCreationDto): Promise<ProfileDto> {
         const userRepo = this.getUserRepoForUser(user);
         const userData = await userRepo.findOne({ _id: user._id });
+        console.log('userData:', userData);
         if (userData && userData.phoneNumber) profileData.phoneNumber = userData.phoneNumber;
         await this.isPhoneNumberVerified(userData);
 
@@ -108,6 +109,7 @@ export class BaseKycService extends BaseAuthService implements IBaseKyc {
     async isPhoneNumberVerified(user: HomeOwner|TradePerson): Promise<void> {
         const kycRepo = this.getKycRepoForUser(user);
         const phoneNumberVerification = await kycRepo.findOne({ user: new mongoose.Types.ObjectId(user._id) });
+        console.log('phoneNumberVerification:', phoneNumberVerification);
         if (!phoneNumberVerification || !phoneNumberVerification.phoneNumber) {
             throw new BadRequestException('Phone number not verified');
         }

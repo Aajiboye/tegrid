@@ -55,4 +55,20 @@ export class JobRequestRepository {
 
     return pagedResponse;
   }
+
+  async findById(id: string) {
+    return this.model.findById(id).lean();
+  }
+
+  async findOne(query: any) {
+    return this.model.findOne(query).lean();
+  }
+
+  async findByAssignedTradePerson(tradePersonId: string) {
+    return this.model
+      .find({ tradespersonId: new Types.ObjectId(tradePersonId) })
+      .populate('jobType')
+      .populate('createdBy', 'phoneNumber userType userName _id')
+      .lean();
+  }
 }

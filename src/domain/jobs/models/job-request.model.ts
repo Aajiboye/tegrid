@@ -45,6 +45,12 @@ export class JobRequest {
 
   @Prop({ type: Types.ObjectId, ref: 'HomeOwner', required: true })
   createdBy: Types.ObjectId;
+
+  @Prop()
+  createdAt?: Date;
+
+  @Prop()
+  updatedAt?: Date;
 }
 
 export const JobRequestSchema = SchemaFactory.createForClass(JobRequest);

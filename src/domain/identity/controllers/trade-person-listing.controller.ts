@@ -5,7 +5,7 @@ import { TradePersonListingItemDto } from '../dtos/TradePersonProfileDto';
 import { TradePersonKycService } from '../services/trade-person-kyc.service';
 
 @ApiTags('TradePerson Listing')
-@Controller('v1/tradepersons')
+@Controller('v1/trade-persons')
 export class TradePersonListingController {
   constructor(private readonly tradePersonKycService: TradePersonKycService) {}
 

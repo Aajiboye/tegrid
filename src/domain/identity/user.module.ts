@@ -40,7 +40,7 @@ import { BaseKycService } from './services/base-kyc.service';
 import { HomeOwnerRepository } from './repositories/user.repo';
 import { TradePersonKycRepository } from './repositories/trade-person-kyc.repo';
 import { UserTypeGuard } from 'src/guards/user-type.guard';
-import { TradePersonKycProfile, TradePersonKycSchema } from './models/trade-person-kyc.model';
+import { TradePersonKycProfile, TradePersonKycProfileSchema } from './models/trade-person-kyc.model';
 import { TradePersonProfile, TradePersonProfileSchema } from './models/trade-person-profile.model';
 import { TradePersonProfileRepository } from './repositories/trade-person-profile.repo';
 import { TradePersonProfileService } from './services/trade-person-profile.service';
@@ -65,7 +65,7 @@ import { TradePersonListingController } from './controllers/trade-person-listing
       { name: PhoneNumberVerification.name, schema: PhoneNumberVerificationSchema },
       { name: Admin.name, schema: AdminSchema },
       { name: AuditLog.name, schema: AuditLogSchema },
-      { name: TradePersonKycProfile.name, schema: TradePersonKycSchema },
+      { name: TradePersonKycProfile.name, schema: TradePersonKycProfileSchema },
   { name: TradePersonProfile.name, schema: TradePersonProfileSchema },
   { name: JobType.name, schema: JobTypeSchema },
   { name: CompetencyTest.name, schema: CompetencyTestSchema }
@@ -129,6 +129,8 @@ import { TradePersonListingController } from './controllers/trade-person-listing
     HomeOwnerKycRepository,
     AdminService,
     AdminRepository,
+    TradePersonKycService,
+    IDENTITY_VERIFIER,
   ],
 })
 export class UserModule { }

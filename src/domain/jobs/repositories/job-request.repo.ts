@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { JobRequest } from '../models/job-request.model';
+import { JobRequest, JobStatus } from '../models/job-request.model';
 import { PageOptions, PaginatedResponse } from 'src/shared/dtos/pagination';
 
 @Injectable()
@@ -74,5 +74,17 @@ export class JobRequestRepository {
 
   async update(id: string, payload: Partial<JobRequest>) {
     return this.model.findByIdAndUpdate(id, { $set: payload }, { new: true }).lean();
+  }
+
+  async findCompletedJobsReadyForBalanceRelease(): Promise<JobRequest[]> {
+    return this.model
+      .find({
+        status: JobStatus.COMPLETED,
+        $or: [
+          { satisfactoryPeriodEndsAt: { $lte: new Date() } },
+          { qaApprovedAt: { $ne: null } },
+        ],
+      })
+      .lean();
   }
 }

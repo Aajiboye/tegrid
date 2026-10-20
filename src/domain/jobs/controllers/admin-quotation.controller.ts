@@ -11,7 +11,7 @@ import {
   QuotationRevisionResponseDto,
   ReviewQuotationDto,
 } from '../dtos/job-request-quotation.dto';
-import { PaymentResponseDto, ReleasePaymentDto } from '../dtos/payment.dto';
+import { ReleasePaymentDto, ReleaseResponseDto } from '../dtos/payment.dto';
 
 @ApiTags('Admin Quotations')
 @Controller('v1/admin/quotations')
@@ -85,8 +85,8 @@ export class AdminQuotationController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RoleGuard)
   @ApiBody({ type: ReleasePaymentDto })
-  @ApiOperation({ summary: 'Admin: Release configured percentage to tradesperson account' })
-  @ApiResponse({ description: 'Payment released', type: PaymentResponseDto })
+  @ApiOperation({ summary: 'Admin: Release initial or balance payment to tradesperson account' })
+  @ApiResponse({ description: 'Payment released', type: ReleaseResponseDto })
   async releasePayment(
     @Param('quotationId') quotationId: string,
     @Body() body: ReleasePaymentDto,
@@ -95,8 +95,24 @@ export class AdminQuotationController {
     const doc = await this.quotationService.releasePayment(
       currentUser._id.toString(),
       quotationId,
+      body.releaseType,
       body.reason,
     );
     return adaptResponse(doc, 'Payment released successfully');
+  }
+
+  @Post('jobs/:jobRequestId/approve-qa')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RoleGuard)
+  @ApiOperation({ summary: 'Admin: Approve quality assurance for a completed job' })
+  async approveQa(
+    @Param('jobRequestId') jobRequestId: string,
+    @user() currentUser: any,
+  ) {
+    const result = await this.quotationService.approveQa(
+      currentUser._id.toString(),
+      jobRequestId,
+    );
+    return adaptResponse(result, result.message);
   }
 }

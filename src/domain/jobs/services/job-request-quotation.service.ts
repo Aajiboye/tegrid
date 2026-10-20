@@ -14,7 +14,9 @@ import { TradePersonKycRepository } from '../../identity/repositories/trade-pers
 import { JobRequestQuotationEventRepository } from '../repositories/job-request-quotation-event.repo';
 import { QuotationRevisionRepository } from '../repositories/quotation-revision.repo';
 import { PaymentRepository } from '../repositories/payment.repo';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PaystackWalletProvider } from '../../wallet/providers/paystack';
+import { MessagingService } from '../../messaging/services/messaging.service';
 import {
   CreateJobRequestQuotationDto,
   UpdateJobRequestQuotationDto,
@@ -23,8 +25,12 @@ import {
   QuotationRevisionResponseDto,
 } from '../dtos/job-request-quotation.dto';
 import { TradePersonContractQueryDto, TradePersonContractResponseDto, ContractStatus } from '../dtos/trade-person-contract.dto';
-import { PayUpfrontResponseDto, PaymentResponseDto } from '../dtos/payment.dto';
+import { PayUpfrontResponseDto, PaymentResponseDto, ReleaseResponseDto } from '../dtos/payment.dto';
+import { VerificationCodeResponseDto } from '../dtos/verification-code.dto';
+import { CreateReviewDto, ReviewResponseDto } from '../dtos/review.dto';
 import { JobStatus } from '../models/job-request.model';
+import { ReleaseRepository } from '../repositories/release.repo';
+import { ReviewRepository } from '../repositories/review.repo';
 
 @Injectable()
 export class JobRequestQuotationService {
@@ -37,7 +43,10 @@ export class JobRequestQuotationService {
     private readonly eventRepo: JobRequestQuotationEventRepository,
     private readonly revisionRepo: QuotationRevisionRepository,
     private readonly paymentRepo: PaymentRepository,
+    private readonly releaseRepo: ReleaseRepository,
+    private readonly reviewRepo: ReviewRepository,
     private readonly paystackProvider: PaystackWalletProvider,
+    private readonly messagingService: MessagingService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -116,13 +125,45 @@ export class JobRequestQuotationService {
       currency: doc.currency || 'NGN',
       status: doc.status,
       paystackReference: doc.paystackReference,
-      paystackTransferReference: doc.paystackTransferReference || undefined,
-      releasedAmount: doc.releasedAmount || undefined,
-      releasedAt: doc.releasedAt ? new Date(doc.releasedAt).toISOString() : undefined,
-      releasedBy: doc.releasedBy?.toString(),
       createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : undefined,
       updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : undefined,
     };
+  }
+
+  private mapReleaseToDto(doc: any): ReleaseResponseDto {
+    return {
+      _id: doc._id.toString(),
+      payment: doc.payment.toString(),
+      quotation: doc.quotation.toString(),
+      jobRequest: doc.jobRequest.toString(),
+      tradePerson: doc.tradePerson.toString(),
+      releaseType: doc.releaseType,
+      amount: doc.amount,
+      currency: doc.currency || 'NGN',
+      status: doc.status,
+      paystackTransferReference: doc.paystackTransferReference || undefined,
+      releasedBy: doc.releasedBy?.toString(),
+      reason: doc.reason || undefined,
+      createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : undefined,
+      updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : undefined,
+    };
+  }
+
+  private mapReviewToDto(doc: any): ReviewResponseDto {
+    return {
+      _id: doc._id.toString(),
+      jobRequest: doc.jobRequest.toString(),
+      tradePerson: doc.tradePerson.toString(),
+      homeOwner: doc.homeOwner.toString(),
+      rating: doc.rating,
+      comment: doc.comment || undefined,
+      createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : undefined,
+      updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : undefined,
+    };
+  }
+
+  private generateVerificationCode(): string {
+    return Math.floor(1000 + Math.random() * 9000).toString();
   }
 
   private async generateQuoteId(): Promise<string> {
@@ -558,9 +599,19 @@ export class JobRequestQuotationService {
         reviewStatus: 'PAYMENT_COMPLETED',
       });
 
+      const verificationCode = this.generateVerificationCode();
       await this.jobRequestRepo.update(payment.jobRequest.toString(), {
         status: JobStatus.QUOTATION_PAID,
+        verificationCode,
+        verificationCodeGeneratedAt: new Date(),
       });
+
+      await this.messagingService.sendSystemJobMessage(
+        quotation.tradePerson.toString(),
+        'TRADESPERSON',
+        payment.jobRequest.toString(),
+        `Your verification code for this job is: ${verificationCode}. Present it to the homeowner when you arrive.`,
+      );
 
       await this.eventRepo.create({
         quotation: quotation._id,
@@ -569,7 +620,7 @@ export class JobRequestQuotationService {
         eventType: 'RESIDENT_PAID',
         notes: 'Homeowner completed payment for the accepted quotation',
         performedBy: payment.homeOwner,
-        metadata: { reference, amount: verification.data.amount / 100 },
+        metadata: { reference, amount: verification.data.amount / 100, verificationCode },
       });
 
       return this.mapPaymentToDto(updatedPayment);
@@ -596,8 +647,9 @@ export class JobRequestQuotationService {
   async releasePayment(
     adminId: string,
     quotationId: string,
+    releaseType: 'INITIAL' | 'BALANCE',
     reason?: string,
-  ): Promise<PaymentResponseDto> {
+  ): Promise<ReleaseResponseDto> {
     const quotation = await this.quotationRepo.findById(quotationId);
     if (!quotation) {
       throw new NotFoundException('Quotation not found');
@@ -612,12 +664,46 @@ export class JobRequestQuotationService {
       throw new NotFoundException('Payment record not found');
     }
 
-    if (payment.status === 'RELEASED') {
-      throw new BadRequestException('Payment has already been released');
+    if (payment.status !== 'SUCCESS' && payment.status !== 'RELEASED') {
+      throw new BadRequestException('Payment must be successful before release');
     }
 
-    if (payment.status !== 'SUCCESS') {
-      throw new BadRequestException('Payment must be successful before release');
+    const existingRelease = await this.releaseRepo.findSuccessfulByPaymentIdAndType(
+      payment._id.toString(),
+      releaseType,
+    );
+    if (existingRelease) {
+      throw new BadRequestException(`${releaseType.toLowerCase()} release has already been completed`);
+    }
+
+    const jobRequest = await this.jobRequestRepo.findById(payment.jobRequest.toString());
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found');
+    }
+
+    if (releaseType === 'INITIAL') {
+      if (!jobRequest.jobCompletedAt || !jobRequest.jobCompletedBy) {
+        throw new BadRequestException('Initial release requires the homeowner to mark the job as completed');
+      }
+    }
+
+    if (releaseType === 'BALANCE') {
+      const initialRelease = await this.releaseRepo.findSuccessfulByPaymentIdAndType(
+        payment._id.toString(),
+        'INITIAL',
+      );
+      if (!initialRelease) {
+        throw new BadRequestException('Initial release must be completed before balance release');
+      }
+
+      const now = new Date();
+      const periodEnded = jobRequest.satisfactoryPeriodEndsAt && jobRequest.satisfactoryPeriodEndsAt <= now;
+      const qaApproved = !!jobRequest.qaApprovedAt;
+      if (!periodEnded && !qaApproved) {
+        throw new BadRequestException(
+          'Balance release requires either QA approval or the 14-day satisfactory period to have elapsed',
+        );
+      }
     }
 
     const kycProfile = await this.tradePersonKycRepo.findOne({
@@ -649,8 +735,19 @@ export class JobRequestQuotationService {
       );
     }
 
-    const releasePercentage = this.configService.get<number>('payment.upfrontReleasePercentage') || 70;
-    const releaseAmount = Math.round((payment.amount * (releasePercentage / 100)) * 100) / 100;
+    const releasePercentage = this.configService.get<number>('payment.upfrontReleasePercentage') || 50;
+    let releaseAmount: number;
+    if (releaseType === 'INITIAL') {
+      releaseAmount = Math.round((payment.amount * (releasePercentage / 100)) * 100) / 100;
+    } else {
+      const initialRelease = await this.releaseRepo.findSuccessfulByPaymentIdAndType(
+        payment._id.toString(),
+        'INITIAL',
+      );
+      const alreadyReleased = initialRelease?.amount || 0;
+      releaseAmount = Math.round((payment.amount - alreadyReleased) * 100) / 100;
+    }
+
     const releaseAmountInKobo = Math.round(releaseAmount * 100);
     const transferReference = `TEG-RELEASE-${uuidv4()}`;
 
@@ -659,28 +756,280 @@ export class JobRequestQuotationService {
       releaseAmountInKobo,
       recipientCode,
       transferReference,
-      reason || `Release ${releasePercentage}% for quote ${quotation.quoteId}`,
+      reason || `${releaseType} release for quote ${quotation.quoteId}`,
     );
 
-    const updatedPayment = await this.paymentRepo.updateById(payment._id.toString(), {
-      status: 'RELEASED',
-      releasedAmount: releaseAmount,
-      releasedAt: new Date(),
-      releasedBy: new Types.ObjectId(adminId),
+    const releasedBy = Types.ObjectId.isValid(adminId) ? new Types.ObjectId(adminId) : null;
+
+    const release = await this.releaseRepo.create({
+      payment: payment._id,
+      quotation: quotation._id,
+      jobRequest: payment.jobRequest,
+      tradePerson: quotation.tradePerson,
+      releaseType,
+      amount: releaseAmount,
+      currency: payment.currency || 'NGN',
+      status: 'SUCCESS',
       paystackTransferReference: transfer.transfer_code,
+      releasedBy,
+      reason,
     });
+
+    await this.paymentRepo.updateById(payment._id.toString(), { status: 'RELEASED' });
 
     await this.eventRepo.create({
       quotation: quotation._id,
       jobRequest: quotation.jobRequest,
       tradePerson: quotation.tradePerson,
       eventType: 'PAYMENT_RELEASED',
-      notes: `Admin released ${releasePercentage}% (${releaseAmount}) to tradesperson`,
-      performedBy: new Types.ObjectId(adminId),
-      metadata: { releaseAmount, releasePercentage, transferReference, reason },
+      notes: `Admin released ${releaseType.toLowerCase()} payment (${releaseAmount}) to tradesperson`,
+      performedBy: releasedBy || undefined,
+      metadata: { releaseType, releaseAmount, transferReference, reason },
     });
 
-    return this.mapPaymentToDto(updatedPayment);
+    return this.mapReleaseToDto(release);
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async autoReleaseBalancePayments(): Promise<void> {
+    this.logger.log('Running auto balance release cron');
+    const jobs = await this.jobRequestRepo.findCompletedJobsReadyForBalanceRelease();
+
+    for (const job of jobs) {
+      try {
+        const quotation = await this.quotationRepo.findPaidByJobRequestId(job._id.toString());
+        if (!quotation) continue;
+
+        const payment = await this.paymentRepo.findByQuotationId(quotation._id.toString());
+        if (!payment || payment.status !== 'RELEASED') continue;
+
+        const existingBalance = await this.releaseRepo.findSuccessfulByPaymentIdAndType(
+          payment._id.toString(),
+          'BALANCE',
+        );
+        if (existingBalance) continue;
+
+        const initialRelease = await this.releaseRepo.findSuccessfulByPaymentIdAndType(
+          payment._id.toString(),
+          'INITIAL',
+        );
+        if (!initialRelease) continue;
+
+        // Use a system/admin-less reference for the cron; in production this may be a dedicated system admin id.
+        await this.releasePayment('system', quotation._id.toString(), 'BALANCE', 'Auto balance release after satisfactory period');
+      } catch (error) {
+        this.logger.error(`Auto balance release failed for job ${job._id}`, error.message);
+      }
+    }
+  }
+
+  async verifyCode(
+    homeOwnerId: string,
+    jobRequestId: string,
+    code: string,
+  ): Promise<{ valid: boolean; message: string }> {
+    const jobRequest = await this.jobRequestRepo.findOne({
+      _id: new Types.ObjectId(jobRequestId),
+      createdBy: new Types.ObjectId(homeOwnerId),
+    });
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found or does not belong to you');
+    }
+
+    if (!jobRequest.verificationCode) {
+      throw new BadRequestException('No verification code has been generated for this job');
+    }
+
+    const valid = jobRequest.verificationCode === code;
+    return {
+      valid,
+      message: valid ? 'Verification code is valid' : 'Verification code is invalid',
+    };
+  }
+
+  async getVerificationCode(
+    homeOwnerId: string,
+    jobRequestId: string,
+  ): Promise<VerificationCodeResponseDto> {
+    const jobRequest = await this.jobRequestRepo.findOne({
+      _id: new Types.ObjectId(jobRequestId),
+      createdBy: new Types.ObjectId(homeOwnerId),
+    });
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found or does not belong to you');
+    }
+
+    if (!jobRequest.verificationCode) {
+      throw new BadRequestException('No verification code has been generated for this job');
+    }
+
+    return {
+      code: jobRequest.verificationCode,
+      generatedAt: jobRequest.verificationCodeGeneratedAt
+        ? new Date(jobRequest.verificationCodeGeneratedAt).toISOString()
+        : undefined,
+    };
+  }
+
+  async markJobComplete(
+    homeOwnerId: string,
+    jobRequestId: string,
+  ): Promise<{ jobRequestId: string; status: string; satisfactoryPeriodEndsAt: string }> {
+    const jobRequest = await this.jobRequestRepo.findOne({
+      _id: new Types.ObjectId(jobRequestId),
+      createdBy: new Types.ObjectId(homeOwnerId),
+    });
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found or does not belong to you');
+    }
+
+    if (jobRequest.status !== JobStatus.QUOTATION_PAID) {
+      throw new BadRequestException('Job must be paid before it can be marked as complete');
+    }
+
+    const satisfactoryPeriodDays = 14;
+    const satisfactoryPeriodEndsAt = new Date();
+    satisfactoryPeriodEndsAt.setDate(satisfactoryPeriodEndsAt.getDate() + satisfactoryPeriodDays);
+
+    const updated = await this.jobRequestRepo.update(jobRequestId, {
+      status: JobStatus.COMPLETED,
+      jobCompletedAt: new Date(),
+      jobCompletedBy: new Types.ObjectId(homeOwnerId),
+      satisfactoryPeriodEndsAt,
+    });
+
+    const quotation = await this.quotationRepo.findPaidByJobRequestId(jobRequestId);
+    if (quotation) {
+      await this.eventRepo.create({
+        quotation: quotation._id,
+        jobRequest: quotation.jobRequest,
+        tradePerson: quotation.tradePerson,
+        eventType: 'JOB_COMPLETED',
+        notes: 'Homeowner marked the job as complete',
+        performedBy: new Types.ObjectId(homeOwnerId),
+        metadata: { satisfactoryPeriodEndsAt },
+      });
+    }
+
+    return {
+      jobRequestId: updated._id.toString(),
+      status: updated.status,
+      satisfactoryPeriodEndsAt: satisfactoryPeriodEndsAt.toISOString(),
+    };
+  }
+
+  async requestJobCompletion(
+    tradePersonId: string,
+    jobRequestId: string,
+  ): Promise<{ message: string }> {
+    const jobRequest = await this.jobRequestRepo.findById(jobRequestId);
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found');
+    }
+
+    const quotation = await this.quotationRepo.findPaidByJobRequestId(jobRequestId);
+    if (!quotation || quotation.tradePerson.toString() !== tradePersonId) {
+      throw new ForbiddenException('Only the assigned tradesperson can request job completion');
+    }
+
+    if (jobRequest.status !== JobStatus.QUOTATION_PAID) {
+      throw new BadRequestException('Job must be paid before completion can be requested');
+    }
+
+    await this.jobRequestRepo.update(jobRequestId, {
+      jobCompletionRequestedBy: new Types.ObjectId(tradePersonId),
+    });
+
+    await this.messagingService.sendSystemJobMessage(
+      jobRequest.createdBy.toString(),
+      'HOME_OWNER',
+      jobRequestId,
+      'The tradesperson has requested to mark this job as complete. Please confirm once the work is satisfactory.',
+    );
+
+    return { message: 'Completion request sent to homeowner' };
+  }
+
+  async approveQa(adminId: string, jobRequestId: string): Promise<{ message: string }> {
+    const jobRequest = await this.jobRequestRepo.findById(jobRequestId);
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found');
+    }
+
+    if (jobRequest.status !== JobStatus.COMPLETED) {
+      throw new BadRequestException('QA can only be approved for completed jobs');
+    }
+
+    await this.jobRequestRepo.update(jobRequestId, {
+      qaApprovedAt: new Date(),
+      qaApprovedBy: new Types.ObjectId(adminId),
+    });
+
+    const quotation = await this.quotationRepo.findPaidByJobRequestId(jobRequestId);
+    if (quotation) {
+      await this.eventRepo.create({
+        quotation: quotation._id,
+        jobRequest: quotation.jobRequest,
+        tradePerson: quotation.tradePerson,
+        eventType: 'QA_APPROVED',
+        notes: 'Admin approved QA for the job',
+        performedBy: new Types.ObjectId(adminId),
+      });
+    }
+
+    return { message: 'QA approved successfully' };
+  }
+
+  async createReview(
+    homeOwnerId: string,
+    jobRequestId: string,
+    dto: CreateReviewDto,
+  ): Promise<ReviewResponseDto> {
+    const jobRequest = await this.jobRequestRepo.findOne({
+      _id: new Types.ObjectId(jobRequestId),
+      createdBy: new Types.ObjectId(homeOwnerId),
+    });
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found or does not belong to you');
+    }
+
+    if (jobRequest.status !== JobStatus.COMPLETED) {
+      throw new BadRequestException('Reviews can only be submitted after job completion');
+    }
+
+    const existingReview = await this.reviewRepo.findByHomeOwnerAndJobRequest(homeOwnerId, jobRequestId);
+    if (existingReview) {
+      throw new BadRequestException('You have already reviewed this job');
+    }
+
+    const quotation = await this.quotationRepo.findPaidByJobRequestId(jobRequestId);
+    if (!quotation) {
+      throw new NotFoundException('No paid quotation found for this job');
+    }
+
+    const review = await this.reviewRepo.create({
+      jobRequest: new Types.ObjectId(jobRequestId),
+      tradePerson: quotation.tradePerson,
+      homeOwner: new Types.ObjectId(homeOwnerId),
+      rating: dto.rating,
+      comment: dto.comment,
+    });
+
+    return this.mapReviewToDto(review);
+  }
+
+  async getReviewsForTradePerson(tradePersonId: string): Promise<{
+    reviews: ReviewResponseDto[];
+    averageRating: number;
+    total: number;
+  }> {
+    const reviews = await this.reviewRepo.findByTradePersonId(tradePersonId);
+    const averageRating = await this.reviewRepo.getAverageRating(tradePersonId);
+    return {
+      reviews: reviews.map((r) => this.mapReviewToDto(r)),
+      averageRating,
+      total: reviews.length,
+    };
   }
 
   async markAsResidentPaid(quotationId: string, homeOwnerId?: string): Promise<JobRequestQuotationResponseDto> {

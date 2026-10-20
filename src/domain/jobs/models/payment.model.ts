@@ -31,18 +31,6 @@ export class Payment {
   @Prop({ type: String, required: true, unique: true })
   paystackReference: string;
 
-  @Prop({ type: String, default: null })
-  paystackTransferReference?: string;
-
-  @Prop({ type: Number, default: 0 })
-  releasedAmount?: number;
-
-  @Prop({ type: Date, default: null })
-  releasedAt?: Date;
-
-  @Prop({ type: Types.ObjectId, ref: 'Admin', default: null })
-  releasedBy?: Types.ObjectId;
-
   @Prop()
   createdAt?: Date;
 

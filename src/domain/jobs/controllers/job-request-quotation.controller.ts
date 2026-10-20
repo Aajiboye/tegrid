@@ -82,6 +82,20 @@ export class JobRequestQuotationController {
     return adaptResponse(docs, 'Revisions retrieved successfully');
   }
 
+  @Post('request-completion')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'TradePerson: Request homeowner to mark job as complete' })
+  async requestCompletion(
+    @user() currentUser: TradePerson,
+    @Param('jobRequestId') jobRequestId: string,
+  ) {
+    const result = await this.quotationService.requestJobCompletion(
+      currentUser._id.toString(),
+      jobRequestId,
+    );
+    return adaptResponse(result, result.message);
+  }
+
   @Delete()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete pending quotation for a job request' })

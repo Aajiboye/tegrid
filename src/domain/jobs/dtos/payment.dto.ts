@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class PayUpfrontResponseDto {
   @ApiProperty({ example: 'https://checkout.paystack.com/abc123' })
@@ -46,18 +46,6 @@ export class PaymentResponseDto {
   @ApiProperty()
   paystackReference: string;
 
-  @ApiPropertyOptional()
-  paystackTransferReference?: string;
-
-  @ApiPropertyOptional({ example: 735000 })
-  releasedAmount?: number;
-
-  @ApiPropertyOptional()
-  releasedAt?: string;
-
-  @ApiPropertyOptional()
-  releasedBy?: string;
-
   @ApiProperty()
   createdAt: string;
 
@@ -67,9 +55,58 @@ export class PaymentResponseDto {
 
 export class ReleasePaymentDto {
   @IsString()
+  @IsNotEmpty()
+  @ApiProperty({ example: 'INITIAL', description: 'INITIAL or BALANCE' })
+  releaseType: 'INITIAL' | 'BALANCE';
+
+  @IsString()
   @IsOptional()
   @ApiPropertyOptional({ example: 'Initial milestone completed' })
   reason?: string;
+}
+
+export class ReleaseResponseDto {
+  @ApiProperty()
+  _id: string;
+
+  @ApiProperty()
+  payment: string;
+
+  @ApiProperty()
+  quotation: string;
+
+  @ApiProperty()
+  jobRequest: string;
+
+  @ApiProperty()
+  tradePerson: string;
+
+  @ApiProperty({ example: 'INITIAL' })
+  releaseType: string;
+
+  @ApiProperty({ example: 500000 })
+  amount: number;
+
+  @ApiProperty({ example: 'NGN' })
+  currency: string;
+
+  @ApiProperty({ example: 'SUCCESS' })
+  status: string;
+
+  @ApiPropertyOptional()
+  paystackTransferReference?: string;
+
+  @ApiPropertyOptional()
+  releasedBy?: string;
+
+  @ApiPropertyOptional()
+  reason?: string;
+
+  @ApiProperty()
+  createdAt: string;
+
+  @ApiProperty()
+  updatedAt: string;
 }
 
 export class PaystackWebhookDto {

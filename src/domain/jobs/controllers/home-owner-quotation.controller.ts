@@ -12,6 +12,11 @@ import {
   JobRequestQuotationResponseDto,
 } from '../dtos/job-request-quotation.dto';
 import { PayUpfrontResponseDto } from '../dtos/payment.dto';
+import {
+  VerificationCodeResponseDto,
+  VerifyCodeDto,
+} from '../dtos/verification-code.dto';
+import { CreateReviewDto, ReviewResponseDto } from '../dtos/review.dto';
 import { UserType } from 'src/domain/identity/enums/user-types.enum';
 import { HomeOwner } from 'src/domain/identity/models/home-owner-user.model';
 
@@ -108,5 +113,69 @@ export class HomeOwnerQuotationController {
       quotationId,
     );
     return adaptResponse(result, 'Payment initialized successfully');
+  }
+
+  @Get('verification-code')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'HomeOwner: View the tradesperson verification code' })
+  @ApiResponse({ description: 'Verification code retrieved', type: VerificationCodeResponseDto })
+  async getVerificationCode(
+    @user() currentUser: HomeOwner,
+    @Param('jobRequestId') jobRequestId: string,
+  ) {
+    const result = await this.quotationService.getVerificationCode(
+      currentUser._id.toString(),
+      jobRequestId,
+    );
+    return adaptResponse(result, 'Verification code retrieved successfully');
+  }
+
+  @Post('verify-code')
+  @ApiBearerAuth()
+  @ApiBody({ type: VerifyCodeDto })
+  @ApiOperation({ summary: 'HomeOwner: Verify the code presented by the tradesperson' })
+  async verifyCode(
+    @user() currentUser: HomeOwner,
+    @Param('jobRequestId') jobRequestId: string,
+    @Body() body: VerifyCodeDto,
+  ) {
+    const result = await this.quotationService.verifyCode(
+      currentUser._id.toString(),
+      jobRequestId,
+      body.code,
+    );
+    return adaptResponse(result, result.valid ? 'Code verified' : 'Code invalid');
+  }
+
+  @Post('complete')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'HomeOwner: Mark the job as complete' })
+  async markComplete(
+    @user() currentUser: HomeOwner,
+    @Param('jobRequestId') jobRequestId: string,
+  ) {
+    const result = await this.quotationService.markJobComplete(
+      currentUser._id.toString(),
+      jobRequestId,
+    );
+    return adaptResponse(result, 'Job marked as complete successfully');
+  }
+
+  @Post('review')
+  @ApiBearerAuth()
+  @ApiBody({ type: CreateReviewDto })
+  @ApiOperation({ summary: 'HomeOwner: Review the tradesperson for this job' })
+  @ApiResponse({ description: 'Review created', type: ReviewResponseDto })
+  async createReview(
+    @user() currentUser: HomeOwner,
+    @Param('jobRequestId') jobRequestId: string,
+    @Body() body: CreateReviewDto,
+  ) {
+    const result = await this.quotationService.createReview(
+      currentUser._id.toString(),
+      jobRequestId,
+      body,
+    );
+    return adaptResponse(result, 'Review submitted successfully');
   }
 }

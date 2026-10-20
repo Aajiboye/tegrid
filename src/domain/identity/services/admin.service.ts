@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AdminRepository } from '../repositories/admin.repo';
 import { PasswordUtilService } from '../../../shared/utils/password.util';
 import { Role } from '../enums/roles.enum';
+import { ALL_STORE_PERMISSIONS } from '../permissions/store-permissions';
 
 @Injectable()
 export class AdminService {
@@ -17,6 +18,7 @@ export class AdminService {
       password: hashed,
       role: Role.Root,
       isActive: true,
+      permissions: ALL_STORE_PERMISSIONS,
     } as any;
     return this.adminRepo.save(admin);
   }

@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { BadRequestException, Logger, ValidationPipe } from '@nestjs/common';
 import { AdminService } from './domain/identity/services/admin.service';
+import { CurrencyMiddleware } from './shared/middleware/currency.middleware';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
@@ -43,6 +44,7 @@ async function bootstrap() {
     }),
   );
   app.enableCors();
+  app.use(new CurrencyMiddleware().use);
 
   await app.listen(port);
   Logger.log(`~ Application is running on: ${await app.getUrl()}`);

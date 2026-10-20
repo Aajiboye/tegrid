@@ -17,6 +17,9 @@ export class Admin {
 
   @Prop({ type: Boolean, default: true })
   isActive: boolean;
+
+  @Prop({ type: [String], default: [] })
+  permissions?: string[];
 }
 
 export const AdminSchema = SchemaFactory.createForClass(Admin);

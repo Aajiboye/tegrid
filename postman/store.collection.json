@@ -1,0 +1,499 @@
+{
+  "info": {
+    "_postman_id": "tegrid-store-module",
+    "name": "Tegrid Store Module",
+    "description": "End-to-end ecommerce/store module collection for TradeExpertGrid",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Admin: Create Category",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Power Tools\",\n  \"slug\": \"power-tools\",\n  \"description\": \"Electric and battery-powered tools\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v1/admin/store/categories",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "admin", "store", "categories"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Admin: Create Product (Purchase)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Bosch Cordless Drill\",\n  \"description\": \"Professional 18V cordless drill\",\n  \"sku\": \"BOS-DRILL-001\",\n  \"category\": \"{{categoryId}}\",\n  \"images\": [\"https://example.com/drill.jpg\"],\n  \"type\": \"PURCHASE\",\n  \"prices\": [\n    { \"currencyCode\": \"NGN\", \"amount\": 50000 },\n    { \"currencyCode\": \"USD\", \"amount\": 35 }\n  ],\n  \"stockQuantity\": 10\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v1/admin/store/products",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "admin", "store", "products"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Admin: Create Product (Rental)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Industrial Generator\",\n  \"description\": \"5KVA diesel generator for rent\",\n  \"sku\": \"GEN-5KVA-001\",\n  \"category\": \"{{categoryId}}\",\n  \"images\": [\"https://example.com/generator.jpg\"],\n  \"type\": \"RENTAL\",\n  \"stockQuantity\": 5,\n  \"rentalConfig\": {\n    \"granularity\": \"DAILY\",\n    \"pricePerUnit\": [\n      { \"currencyCode\": \"NGN\", \"amount\": 15000 },\n      { \"currencyCode\": \"USD\", \"amount\": 10 }\n    ],\n    \"minimumDuration\": 1,\n    \"quantity\": 5\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v1/admin/store/products",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "admin", "store", "products"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Admin: Submit Product for Approval",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/v1/admin/store/products/{{productId}}/submit-approval",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "admin", "store", "products", "{{productId}}", "submit-approval"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Admin: Approve Product",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{approverToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/v1/admin/store/products/{{productId}}/approve",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "admin", "store", "products", "{{productId}}", "approve"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Store: List Approved Products",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-user-currency",
+            "value": "NGN",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/v1/store/products?category={{categoryId}}&minPrice=1000&maxPrice=100000&page=1&size=20",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "store", "products"],
+          "query": [
+            { "key": "category", "value": "{{categoryId}}" },
+            { "key": "minPrice", "value": "1000" },
+            { "key": "maxPrice", "value": "100000" },
+            { "key": "page", "value": "1" },
+            { "key": "size", "value": "20" }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Store: Product Detail",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-user-currency",
+            "value": "NGN",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/v1/store/products/{{productId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "store", "products", "{{productId}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "User: Create Shipping Address",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"label\": \"Home\",\n  \"recipientName\": \"John Doe\",\n  \"phoneNumber\": \"+2348012345678\",\n  \"addressLine1\": \"123 Main Street\",\n  \"city\": \"Ikeja\",\n  \"state\": \"Lagos\",\n  \"country\": \"Nigeria\",\n  \"postalCode\": \"100001\",\n  \"isDefault\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v1/store/shipping-addresses",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "store", "shipping-addresses"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "User: Add Purchase Item to Cart",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}",
+            "type": "text"
+          },
+          {
+            "key": "x-user-currency",
+            "value": "NGN",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"productId\": \"{{purchaseProductId}}\",\n  \"type\": \"PURCHASE\",\n  \"quantity\": 1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v1/store/cart/items",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "store", "cart", "items"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "User: Add Rental Item to Cart",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}",
+            "type": "text"
+          },
+          {
+            "key": "x-user-currency",
+            "value": "NGN",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"productId\": \"{{rentalProductId}}\",\n  \"type\": \"RENTAL\",\n  \"quantity\": 1,\n  \"rentalStart\": \"2026-10-25T10:00:00Z\",\n  \"rentalEnd\": \"2026-10-27T10:00:00Z\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v1/store/cart/items",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "store", "cart", "items"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "User: Get Cart",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/v1/store/cart",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "store", "cart"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "User: Checkout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"shippingAddressId\": \"{{shippingAddressId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v1/store/checkout",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "store", "checkout"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Store: Paystack Callback",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/v1/store/payments/paystack/callback?reference={{paymentReference}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "store", "payments", "paystack", "callback"],
+          "query": [
+            { "key": "reference", "value": "{{paymentReference}}" }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "User: List Orders",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/v1/store/orders",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "store", "orders"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Admin: Add Tracking Update",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"IN_TRANSIT\",\n  \"note\": \"Package dispatched from warehouse\",\n  \"carrier\": \"DHL\",\n  \"trackingNumber\": \"TRK123456789\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/v1/admin/store/orders/{{orderId}}/tracking",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "admin", "store", "orders", "{{orderId}}", "tracking"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Admin: Mark Order Delivered",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/v1/admin/store/orders/{{orderId}}/deliver",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "admin", "store", "orders", "{{orderId}}", "deliver"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "User: Request Rental Return",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{userToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/v1/store/orders/{{orderId}}/rentals/{{reservationId}}/return",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "store", "orders", "{{orderId}}", "rentals", "{{reservationId}}", "return"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Admin: Confirm Rental Return",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/v1/admin/store/rentals/{{reservationId}}/confirm-return",
+          "host": ["{{baseUrl}}"],
+          "path": ["v1", "admin", "store", "rentals", "{{reservationId}}", "confirm-return"]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "approverToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "categoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "purchaseProductId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rentalProductId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "shippingAddressId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentReference",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reservationId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

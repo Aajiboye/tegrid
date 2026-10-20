@@ -111,11 +111,50 @@ export class UpdateJobRequestQuotationDto {
   workmanships?: WorkmanshipDto[];
 }
 
+export class ReviseQuotationDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => MaterialDto)
+  @ApiProperty({ type: [MaterialDto] })
+  materials: MaterialDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ToolDto)
+  @ApiProperty({ type: [ToolDto] })
+  tools: ToolDto[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkmanshipDto)
+  @ApiProperty({ type: [WorkmanshipDto] })
+  workmanships: WorkmanshipDto[];
+
+  @IsString()
+  @IsOptional()
+  @ApiPropertyOptional({ example: 'Reduced labour cost' })
+  changeReason?: string;
+}
+
+export class HomeOwnerAcceptQuotationDto {
+  @IsString()
+  @IsOptional()
+  @ApiPropertyOptional({ example: 'Accepted for immediate work' })
+  notes?: string;
+}
+
+export class HomeOwnerRejectQuotationDto {
+  @IsString()
+  @IsOptional()
+  @ApiPropertyOptional({ example: 'Price is too high' })
+  reason?: string;
+}
+
 export class ReviewQuotationDto {
   @IsString()
   @IsNotEmpty()
-  @ApiProperty({ example: 'ACCEPTED', description: 'ACCEPTED or REJECTED' })
-  status: 'ACCEPTED' | 'REJECTED';
+  @ApiProperty({ example: 'ADMIN_APPROVED', description: 'ADMIN_APPROVED or ADMIN_REJECTED' })
+  status: 'ADMIN_APPROVED' | 'ADMIN_REJECTED';
 
   @IsString()
   @IsOptional()
@@ -169,6 +208,44 @@ export class QuotationEventResponseDto {
   updatedAt: string;
 }
 
+export class QuotationRevisionResponseDto {
+  @ApiProperty()
+  _id: string;
+
+  @ApiProperty()
+  quotation: string;
+
+  @ApiProperty()
+  jobRequest: string;
+
+  @ApiProperty()
+  tradePerson: string;
+
+  @ApiProperty()
+  revisionNumber: number;
+
+  @ApiProperty({ type: [MaterialDto] })
+  materials: MaterialDto[];
+
+  @ApiProperty({ type: [ToolDto] })
+  tools: ToolDto[];
+
+  @ApiProperty({ type: [WorkmanshipDto] })
+  workmanships: WorkmanshipDto[];
+
+  @ApiPropertyOptional()
+  totalAmount?: number;
+
+  @ApiPropertyOptional()
+  changeReason?: string;
+
+  @ApiProperty()
+  createdAt: string;
+
+  @ApiProperty()
+  updatedAt: string;
+}
+
 export class JobRequestQuotationResponseDto {
   @ApiProperty()
   _id: string;
@@ -196,6 +273,12 @@ export class JobRequestQuotationResponseDto {
 
   @ApiPropertyOptional({ example: 'Price is too high' })
   rejectionReason?: string;
+
+  @ApiPropertyOptional({ example: 10500 })
+  totalAmount?: number;
+
+  @ApiPropertyOptional({ example: 1 })
+  currentRevisionNumber?: number;
 
   @ApiProperty({ type: [QuotationEventResponseDto] })
   events: QuotationEventResponseDto[];

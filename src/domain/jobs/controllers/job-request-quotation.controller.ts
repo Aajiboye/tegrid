@@ -5,7 +5,12 @@ import { UserTypeGuard } from 'src/guards/user-type.guard';
 import { user } from 'src/decorators/user.decorator';
 import { adaptResponse } from 'src/shared/adapters/response.adapter';
 import { JobRequestQuotationService } from '../services/job-request-quotation.service';
-import { CreateJobRequestQuotationDto, JobRequestQuotationResponseDto, UpdateJobRequestQuotationDto } from '../dtos/job-request-quotation.dto';
+import {
+  CreateJobRequestQuotationDto,
+  JobRequestQuotationResponseDto,
+  ReviseQuotationDto,
+  UpdateJobRequestQuotationDto,
+} from '../dtos/job-request-quotation.dto';
 import { RequireUserType } from 'src/decorators/require-user-type.decorator';
 import { UserType } from 'src/domain/identity/enums/user-types.enum';
 import { TradePerson } from 'src/domain/identity/models/trade-person-user.model';
@@ -42,7 +47,7 @@ export class JobRequestQuotationController {
 
   @Put()
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update quotation for a job request' })
+  @ApiOperation({ summary: 'Update pending quotation for a job request' })
   @ApiBody({ type: UpdateJobRequestQuotationDto })
   @ApiResponse({ description: 'Quotation updated', type: JobRequestQuotationResponseDto })
   async update(
@@ -54,9 +59,32 @@ export class JobRequestQuotationController {
     return adaptResponse(doc, 'Quotation updated successfully');
   }
 
+  @Post(':quotationId/revise')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Revise a homeowner-rejected quotation' })
+  @ApiBody({ type: ReviseQuotationDto })
+  @ApiResponse({ description: 'Quotation revised', type: JobRequestQuotationResponseDto })
+  async revise(
+    @user() currentUser: TradePerson,
+    @Param('quotationId') quotationId: string,
+    @Body() body: ReviseQuotationDto,
+  ) {
+    const doc = await this.quotationService.revise(currentUser._id.toString(), quotationId, body);
+    return adaptResponse(doc, 'Quotation revised successfully');
+  }
+
+  @Get(':quotationId/revisions')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List revision history for a quotation' })
+  @ApiResponse({ description: 'Revisions retrieved', type: [ReviseQuotationDto] })
+  async listRevisions(@Param('quotationId') quotationId: string) {
+    const docs = await this.quotationService.getQuotationRevisions(quotationId);
+    return adaptResponse(docs, 'Revisions retrieved successfully');
+  }
+
   @Delete()
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete quotation for a job request' })
+  @ApiOperation({ summary: 'Delete pending quotation for a job request' })
   async delete(
     @user() currentUser: any,
     @Param('jobRequestId') jobRequestId: string,

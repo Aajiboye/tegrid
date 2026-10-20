@@ -1,19 +1,44 @@
-import { BadRequestException, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Types } from 'mongoose';
+import { v4 as uuidv4 } from 'uuid';
 import { JobRequestQuotationRepository } from '../repositories/job-request-quotation.repo';
 import { JobRequestRepository } from '../repositories/job-request.repo';
 import { TradePersonKycRepository } from '../../identity/repositories/trade-person-kyc.repo';
 import { JobRequestQuotationEventRepository } from '../repositories/job-request-quotation-event.repo';
-import { CreateJobRequestQuotationDto, UpdateJobRequestQuotationDto, JobRequestQuotationResponseDto } from '../dtos/job-request-quotation.dto';
+import { QuotationRevisionRepository } from '../repositories/quotation-revision.repo';
+import { PaymentRepository } from '../repositories/payment.repo';
+import { PaystackWalletProvider } from '../../wallet/providers/paystack';
+import {
+  CreateJobRequestQuotationDto,
+  UpdateJobRequestQuotationDto,
+  ReviseQuotationDto,
+  JobRequestQuotationResponseDto,
+  QuotationRevisionResponseDto,
+} from '../dtos/job-request-quotation.dto';
 import { TradePersonContractQueryDto, TradePersonContractResponseDto, ContractStatus } from '../dtos/trade-person-contract.dto';
+import { PayUpfrontResponseDto, PaymentResponseDto } from '../dtos/payment.dto';
+import { JobStatus } from '../models/job-request.model';
 
 @Injectable()
 export class JobRequestQuotationService {
+  private readonly logger = new Logger(JobRequestQuotationService.name);
+
   constructor(
     private readonly quotationRepo: JobRequestQuotationRepository,
     private readonly jobRequestRepo: JobRequestRepository,
     private readonly tradePersonKycRepo: TradePersonKycRepository,
     private readonly eventRepo: JobRequestQuotationEventRepository,
+    private readonly revisionRepo: QuotationRevisionRepository,
+    private readonly paymentRepo: PaymentRepository,
+    private readonly paystackProvider: PaystackWalletProvider,
+    private readonly configService: ConfigService,
   ) {}
 
   private mapTradePerson(tradePerson: any): { _id: string; userName?: string; email?: string; profileAvatar?: string } | null {
@@ -29,6 +54,21 @@ export class JobRequestQuotationService {
     };
   }
 
+  private calculateTotalAmount(dto: { materials?: any[]; tools?: any[]; workmanships?: any[] }): number {
+    const lineTotal = (item: any) => {
+      const quantity = item.quantity || 1;
+      const unitPrice = item.unitPrice || 0;
+      const vat = item.vat || 0;
+      return quantity * unitPrice + vat;
+    };
+
+    const materialsTotal = (dto.materials || []).reduce((sum, item) => sum + lineTotal(item), 0);
+    const toolsTotal = (dto.tools || []).reduce((sum, item) => sum + lineTotal(item), 0);
+    const workmanshipTotal = (dto.workmanships || []).reduce((sum, item) => sum + (item.price || 0), 0);
+
+    return materialsTotal + toolsTotal + workmanshipTotal;
+  }
+
   private mapToDto(doc: any): JobRequestQuotationResponseDto {
     return {
       _id: doc._id.toString(),
@@ -39,8 +79,47 @@ export class JobRequestQuotationService {
       tools: doc.tools || [],
       workmanships: doc.workmanships || [],
       reviewStatus: doc.reviewStatus || 'PENDING',
-      rejectionReason: doc.reviewStatus === 'REJECTED' ? doc.rejectionReason : undefined,
+      rejectionReason: doc.rejectionReason || undefined,
+      totalAmount: doc.totalAmount || 0,
+      currentRevisionNumber: doc.currentRevisionNumber || 0,
       events: [],
+      createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : undefined,
+      updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : undefined,
+    };
+  }
+
+  private mapRevisionToDto(doc: any): QuotationRevisionResponseDto {
+    return {
+      _id: doc._id.toString(),
+      quotation: doc.quotation.toString(),
+      jobRequest: doc.jobRequest.toString(),
+      tradePerson: doc.tradePerson.toString(),
+      revisionNumber: doc.revisionNumber,
+      materials: doc.materials || [],
+      tools: doc.tools || [],
+      workmanships: doc.workmanships || [],
+      totalAmount: doc.totalAmount || 0,
+      changeReason: doc.changeReason || undefined,
+      createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : undefined,
+      updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : undefined,
+    };
+  }
+
+  private mapPaymentToDto(doc: any): PaymentResponseDto {
+    return {
+      _id: doc._id.toString(),
+      quotation: doc.quotation.toString(),
+      jobRequest: doc.jobRequest.toString(),
+      homeOwner: doc.homeOwner.toString(),
+      tradePerson: doc.tradePerson.toString(),
+      amount: doc.amount,
+      currency: doc.currency || 'NGN',
+      status: doc.status,
+      paystackReference: doc.paystackReference,
+      paystackTransferReference: doc.paystackTransferReference || undefined,
+      releasedAmount: doc.releasedAmount || undefined,
+      releasedAt: doc.releasedAt ? new Date(doc.releasedAt).toISOString() : undefined,
+      releasedBy: doc.releasedBy?.toString(),
       createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : undefined,
       updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : undefined,
     };
@@ -60,10 +139,20 @@ export class JobRequestQuotationService {
     return quoteId;
   }
 
+  private async assertJobAllowsNewQuotations(jobRequestId: string): Promise<void> {
+    const jobRequest = await this.jobRequestRepo.findById(jobRequestId);
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found');
+    }
+    if (jobRequest.status === JobStatus.QUOTATION_PAID) {
+      throw new BadRequestException('This job already has an accepted and paid quotation. No more quotations can be submitted.');
+    }
+  }
+
   async create(tradePersonId: string, jobRequestId: string, dto: CreateJobRequestQuotationDto): Promise<JobRequestQuotationResponseDto> {
     const kycProfile = await this.tradePersonKycRepo.findOne({ user: new Types.ObjectId(tradePersonId) });
     if (!kycProfile || kycProfile.status !== 'APPROVED') {
-    //   throw new ForbiddenException('Only tradespersons with approved KYC can submit a quotation');
+      // Requirement currently relaxed in existing code; keep existing behavior.
     }
 
     const jobRequest = await this.jobRequestRepo.findOne({ _id: new Types.ObjectId(jobRequestId) });
@@ -79,6 +168,8 @@ export class JobRequestQuotationService {
       throw new BadRequestException('Tradesperson id is required to submit a quotation');
     }
 
+    await this.assertJobAllowsNewQuotations(jobRequestId);
+
     const existing = await this.quotationRepo.findOne({
       jobRequest: new Types.ObjectId(jobRequestId),
       tradePerson: new Types.ObjectId(tradePersonId),
@@ -87,6 +178,7 @@ export class JobRequestQuotationService {
     if (existing) throw new BadRequestException('You have already submitted a quotation for this job request');
 
     const quoteId = await this.generateQuoteId();
+    const totalAmount = this.calculateTotalAmount(dto);
 
     const doc = await this.quotationRepo.create({
       jobRequest: new Types.ObjectId(jobRequestId),
@@ -95,6 +187,8 @@ export class JobRequestQuotationService {
       materials: dto.materials,
       tools: dto.tools,
       workmanships: dto.workmanships,
+      totalAmount,
+      currentRevisionNumber: 0,
     });
 
     await this.eventRepo.create({
@@ -103,7 +197,7 @@ export class JobRequestQuotationService {
       tradePerson: new Types.ObjectId(tradePersonId),
       eventType: 'QUOTE_SUBMITTED',
       notes: 'Tradesperson submitted a quotation',
-      metadata: doc,
+      metadata: { totalAmount },
     });
 
     return this.mapToDto(doc);
@@ -133,7 +227,6 @@ export class JobRequestQuotationService {
   }
 
   async getByJobRequestId(jobRequestId: string, tradePersonId: string): Promise<JobRequestQuotationResponseDto> {
-
     const doc = await this.quotationRepo.findOne({ jobRequest: new Types.ObjectId(jobRequestId), tradePerson: new Types.ObjectId(tradePersonId) });
     if (!doc) {
       throw new NotFoundException('Quotation not found for this job request');
@@ -151,13 +244,73 @@ export class JobRequestQuotationService {
       throw new ForbiddenException('Only the tradesperson who submitted this quotation can update it');
     }
 
+    if (doc.reviewStatus !== 'PENDING') {
+      throw new BadRequestException('Only pending quotations can be updated');
+    }
+
     const payload: any = {};
     if (dto.materials !== undefined) payload.materials = dto.materials;
     if (dto.tools !== undefined) payload.tools = dto.tools;
     if (dto.workmanships !== undefined) payload.workmanships = dto.workmanships;
+    payload.totalAmount = this.calculateTotalAmount(payload);
 
     const updated = await this.quotationRepo.update(doc._id.toString(), payload);
     return this.mapToDto(updated);
+  }
+
+  async revise(
+    tradePersonId: string,
+    quotationId: string,
+    dto: ReviseQuotationDto,
+  ): Promise<JobRequestQuotationResponseDto> {
+    const doc = await this.quotationRepo.findById(quotationId);
+    if (!doc) {
+      throw new NotFoundException('Quotation not found');
+    }
+
+    if (doc.tradePerson?.toString() !== tradePersonId) {
+      throw new ForbiddenException('Only the tradesperson who submitted this quotation can revise it');
+    }
+
+    if (doc.reviewStatus !== 'HOMEOWNER_REJECTED') {
+      throw new BadRequestException('Only homeowner-rejected quotations can be revised');
+    }
+
+    const nextRevisionNumber = (doc.currentRevisionNumber || 0) + 1;
+    const totalAmount = this.calculateTotalAmount(dto);
+
+    await this.revisionRepo.create({
+      quotation: doc._id,
+      jobRequest: doc.jobRequest,
+      tradePerson: doc.tradePerson,
+      revisionNumber: doc.currentRevisionNumber || 0,
+      materials: doc.materials,
+      tools: doc.tools,
+      workmanships: doc.workmanships,
+      totalAmount: doc.totalAmount,
+      changeReason: dto.changeReason,
+    });
+
+    const updated = await this.quotationRepo.update(doc._id.toString(), {
+      materials: dto.materials,
+      tools: dto.tools,
+      workmanships: dto.workmanships,
+      totalAmount,
+      reviewStatus: 'PENDING',
+      currentRevisionNumber: nextRevisionNumber,
+      rejectionReason: null,
+    });
+
+    await this.eventRepo.create({
+      quotation: updated._id,
+      jobRequest: updated.jobRequest,
+      tradePerson: updated.tradePerson,
+      eventType: 'QUOTE_SUBMITTED',
+      notes: `Tradesperson submitted revision ${nextRevisionNumber}`,
+      metadata: { revisionNumber: nextRevisionNumber, changeReason: dto.changeReason, totalAmount },
+    });
+
+    return this.mapToResponse(updated);
   }
 
   async delete(tradePersonId: string, jobRequestId: string): Promise<void> {
@@ -170,10 +323,19 @@ export class JobRequestQuotationService {
       throw new ForbiddenException('Only the tradesperson who submitted this quotation can delete it');
     }
 
+    if (doc.reviewStatus !== 'PENDING') {
+      throw new BadRequestException('Only pending quotations can be deleted');
+    }
+
     await this.quotationRepo.deleteById(doc._id.toString());
   }
 
-  async reviewQuotation(quotationId: string, status: 'ACCEPTED' | 'REJECTED', reason?: string, adminId?: string): Promise<JobRequestQuotationResponseDto> {
+  async reviewQuotation(
+    quotationId: string,
+    status: 'ADMIN_APPROVED' | 'ADMIN_REJECTED',
+    reason?: string,
+    adminId?: string,
+  ): Promise<JobRequestQuotationResponseDto> {
     const doc = await this.quotationRepo.findById(quotationId);
     if (!doc) {
       throw new NotFoundException('Quotation not found');
@@ -183,23 +345,20 @@ export class JobRequestQuotationService {
       throw new BadRequestException('Quotation has already been reviewed');
     }
 
-    if (status === 'REJECTED' && !reason) {
+    if (status === 'ADMIN_REJECTED' && !reason) {
       throw new BadRequestException('Rejection reason is required');
     }
 
-    if (status === 'ACCEPTED') {
-      const existingApproved = await this.quotationRepo.findAcceptedByJobRequestIdExcludeCurrent(
-        doc.jobRequest.toString(),
-        quotationId,
-      );
-      if (existingApproved) {
-        throw new BadRequestException('Another quotation for this job has already been approved');
+    if (status === 'ADMIN_APPROVED') {
+      const existingApproved = await this.quotationRepo.findAdminApprovedByJobRequestId(doc.jobRequest.toString());
+      if (existingApproved && existingApproved._id.toString() !== quotationId) {
+        throw new BadRequestException('Another quotation for this job has already been approved by admin');
       }
     }
 
     const update: any = {
       reviewStatus: status,
-      rejectionReason: status === 'REJECTED' ? reason : null,
+      rejectionReason: status === 'ADMIN_REJECTED' ? reason : null,
     };
 
     const updated = await this.quotationRepo.updateIfPending(quotationId, update);
@@ -207,18 +366,321 @@ export class JobRequestQuotationService {
       throw new BadRequestException('Quotation was already reviewed by another process');
     }
 
-    const eventType = status === 'ACCEPTED' ? 'QUOTE_APPROVED' : 'QUOTE_REJECTED';
+    const eventType = status === 'ADMIN_APPROVED' ? 'QUOTE_APPROVED' : 'QUOTE_REJECTED';
     await this.eventRepo.create({
       quotation: updated._id,
       jobRequest: updated.jobRequest,
       tradePerson: updated.tradePerson,
       eventType,
-      notes: status === 'REJECTED' ? reason : `Quotation ${status.toLowerCase()}`,
+      notes: status === 'ADMIN_REJECTED' ? reason : `Quotation ${status.toLowerCase()}`,
       performedBy: adminId ? new Types.ObjectId(adminId) : undefined,
       metadata: { previousStatus: doc.reviewStatus, reason },
     });
 
     return this.mapToResponse(updated);
+  }
+
+  async acceptQuotation(
+    homeOwnerId: string,
+    jobRequestId: string,
+    quotationId: string,
+    notes?: string,
+  ): Promise<JobRequestQuotationResponseDto> {
+    const jobRequest = await this.jobRequestRepo.findOne({
+      _id: new Types.ObjectId(jobRequestId),
+      createdBy: new Types.ObjectId(homeOwnerId),
+    });
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found or does not belong to you');
+    }
+
+    const doc = await this.quotationRepo.findById(quotationId);
+    if (!doc || doc.jobRequest.toString() !== jobRequestId) {
+      throw new NotFoundException('Quotation not found for this job request');
+    }
+
+    if (doc.reviewStatus !== 'ADMIN_APPROVED') {
+      throw new BadRequestException('Only admin-approved quotations can be accepted');
+    }
+
+    const existingAccepted = await this.quotationRepo.findAcceptedByJobRequestId(jobRequestId);
+    if (existingAccepted && existingAccepted._id.toString() !== quotationId) {
+      throw new BadRequestException('Another quotation has already been accepted for this job');
+    }
+
+    const updated = await this.quotationRepo.updateIfStatus(quotationId, ['ADMIN_APPROVED'], {
+      reviewStatus: 'HOMEOWNER_ACCEPTED',
+    });
+    if (!updated) {
+      throw new BadRequestException('Quotation is no longer available for acceptance');
+    }
+
+    await this.eventRepo.create({
+      quotation: updated._id,
+      jobRequest: updated.jobRequest,
+      tradePerson: updated.tradePerson,
+      eventType: 'QUOTE_APPROVED',
+      notes: notes || 'Homeowner accepted the quotation',
+      performedBy: new Types.ObjectId(homeOwnerId),
+      metadata: { acceptedBy: homeOwnerId },
+    });
+
+    return this.mapToResponse(updated);
+  }
+
+  async rejectQuotation(
+    homeOwnerId: string,
+    jobRequestId: string,
+    quotationId: string,
+    reason?: string,
+  ): Promise<JobRequestQuotationResponseDto> {
+    const jobRequest = await this.jobRequestRepo.findOne({
+      _id: new Types.ObjectId(jobRequestId),
+      createdBy: new Types.ObjectId(homeOwnerId),
+    });
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found or does not belong to you');
+    }
+
+    const doc = await this.quotationRepo.findById(quotationId);
+    if (!doc || doc.jobRequest.toString() !== jobRequestId) {
+      throw new NotFoundException('Quotation not found for this job request');
+    }
+
+    if (doc.reviewStatus !== 'ADMIN_APPROVED') {
+      throw new BadRequestException('Only admin-approved quotations can be rejected by homeowner');
+    }
+
+    const updated = await this.quotationRepo.updateIfStatus(quotationId, ['ADMIN_APPROVED'], {
+      reviewStatus: 'HOMEOWNER_REJECTED',
+      rejectionReason: reason || null,
+    });
+    if (!updated) {
+      throw new BadRequestException('Quotation is no longer available for rejection');
+    }
+
+    await this.eventRepo.create({
+      quotation: updated._id,
+      jobRequest: updated.jobRequest,
+      tradePerson: updated.tradePerson,
+      eventType: 'QUOTE_REJECTED',
+      notes: reason || 'Homeowner rejected the quotation',
+      performedBy: new Types.ObjectId(homeOwnerId),
+      metadata: { rejectedBy: homeOwnerId, reason },
+    });
+
+    return this.mapToResponse(updated);
+  }
+
+  async initializeUpfrontPayment(
+    homeOwnerId: string,
+    homeOwnerEmail: string,
+    jobRequestId: string,
+    quotationId: string,
+  ): Promise<PayUpfrontResponseDto> {
+    const jobRequest = await this.jobRequestRepo.findOne({
+      _id: new Types.ObjectId(jobRequestId),
+      createdBy: new Types.ObjectId(homeOwnerId),
+    });
+    if (!jobRequest) {
+      throw new NotFoundException('Job request not found or does not belong to you');
+    }
+
+    const doc = await this.quotationRepo.findById(quotationId);
+    if (!doc || doc.jobRequest.toString() !== jobRequestId) {
+      throw new NotFoundException('Quotation not found for this job request');
+    }
+
+    if (doc.reviewStatus !== 'HOMEOWNER_ACCEPTED') {
+      throw new BadRequestException('Only accepted quotations can be paid for');
+    }
+
+    const existingPayment = await this.paymentRepo.findByQuotationId(quotationId);
+    if (existingPayment?.status === 'SUCCESS' || existingPayment?.status === 'RELEASED') {
+      throw new BadRequestException('Payment has already been completed for this quotation');
+    }
+
+    const reference = `TEG-${uuidv4()}`;
+    const amountInKobo = Math.round((doc.totalAmount || 0) * 100);
+    const callbackUrl = this.configService.get<string>('payment.callbackUrl');
+
+    const initialized = await this.paystackProvider.initializeTransaction(
+      homeOwnerEmail,
+      amountInKobo,
+      reference,
+      callbackUrl,
+      {
+        quotationId: doc._id.toString(),
+        jobRequestId: jobRequest._id.toString(),
+        homeOwnerId,
+        tradePersonId: doc.tradePerson.toString(),
+      },
+    );
+
+    await this.paymentRepo.create({
+      quotation: doc._id,
+      jobRequest: jobRequest._id,
+      homeOwner: new Types.ObjectId(homeOwnerId),
+      tradePerson: doc.tradePerson,
+      amount: doc.totalAmount || 0,
+      currency: jobRequest.currency || 'NGN',
+      status: 'PENDING',
+      paystackReference: reference,
+    });
+
+    return {
+      authorizationUrl: initialized.authorization_url,
+      accessCode: initialized.access_code,
+      reference: initialized.reference,
+      amount: amountInKobo,
+      currency: jobRequest.currency || 'NGN',
+    };
+  }
+
+  async handlePaystackCallback(reference: string): Promise<PaymentResponseDto> {
+    const payment = await this.paymentRepo.findByReference(reference);
+    if (!payment) {
+      throw new NotFoundException('Payment record not found');
+    }
+
+    if (payment.status === 'SUCCESS' || payment.status === 'RELEASED') {
+      return this.mapPaymentToDto(payment);
+    }
+
+    const verification = await this.paystackProvider.verifyTransaction(reference);
+    if (verification.status && verification.data?.status === 'success') {
+      const updatedPayment = await this.paymentRepo.updateByReference(reference, {
+        status: 'SUCCESS',
+        amount: verification.data.amount / 100,
+      });
+
+      const quotation = await this.quotationRepo.update(payment.quotation.toString(), {
+        reviewStatus: 'PAYMENT_COMPLETED',
+      });
+
+      await this.jobRequestRepo.update(payment.jobRequest.toString(), {
+        status: JobStatus.QUOTATION_PAID,
+      });
+
+      await this.eventRepo.create({
+        quotation: quotation._id,
+        jobRequest: quotation.jobRequest,
+        tradePerson: quotation.tradePerson,
+        eventType: 'RESIDENT_PAID',
+        notes: 'Homeowner completed payment for the accepted quotation',
+        performedBy: payment.homeOwner,
+        metadata: { reference, amount: verification.data.amount / 100 },
+      });
+
+      return this.mapPaymentToDto(updatedPayment);
+    }
+
+    await this.paymentRepo.updateByReference(reference, { status: 'FAILED' });
+    throw new BadRequestException('Payment verification failed');
+  }
+
+  async handlePaystackWebhook(event: string, data: any): Promise<void> {
+    if (event !== 'charge.success') {
+      return;
+    }
+    const reference = data?.reference;
+    if (!reference) return;
+
+    try {
+      await this.handlePaystackCallback(reference);
+    } catch (error) {
+      this.logger.error(`Failed to process Paystack webhook for ${reference}`, error.message);
+    }
+  }
+
+  async releasePayment(
+    adminId: string,
+    quotationId: string,
+    reason?: string,
+  ): Promise<PaymentResponseDto> {
+    const quotation = await this.quotationRepo.findById(quotationId);
+    if (!quotation) {
+      throw new NotFoundException('Quotation not found');
+    }
+
+    if (quotation.reviewStatus !== 'PAYMENT_COMPLETED') {
+      throw new BadRequestException('Payment can only be released after homeowner has paid');
+    }
+
+    const payment = await this.paymentRepo.findByQuotationId(quotationId);
+    if (!payment) {
+      throw new NotFoundException('Payment record not found');
+    }
+
+    if (payment.status === 'RELEASED') {
+      throw new BadRequestException('Payment has already been released');
+    }
+
+    if (payment.status !== 'SUCCESS') {
+      throw new BadRequestException('Payment must be successful before release');
+    }
+
+    const kycProfile = await this.tradePersonKycRepo.findOne({
+      user: quotation.tradePerson,
+    });
+    if (!kycProfile || kycProfile.status !== 'APPROVED') {
+      throw new BadRequestException('Tradesperson KYC is not approved');
+    }
+
+    const bankAccount = (kycProfile.bankAccounts || [])[0];
+    if (!bankAccount) {
+      throw new BadRequestException('Tradesperson has no onboarded bank account');
+    }
+
+    let recipientCode = bankAccount.paystackRecipientCode;
+    if (!recipientCode) {
+      const recipient = await this.paystackProvider.createTransferRecipient(
+        'nuban',
+        bankAccount.accountName,
+        bankAccount.accountNumber,
+        bankAccount.bankCode,
+        payment.currency || 'NGN',
+      );
+      recipientCode = recipient.recipient_code;
+
+      await this.tradePersonKycRepo.update(
+        { _id: kycProfile._id, 'bankAccounts.accountNumber': bankAccount.accountNumber },
+        { $set: { 'bankAccounts.$.paystackRecipientCode': recipientCode } },
+      );
+    }
+
+    const releasePercentage = this.configService.get<number>('payment.upfrontReleasePercentage') || 70;
+    const releaseAmount = Math.round((payment.amount * (releasePercentage / 100)) * 100) / 100;
+    const releaseAmountInKobo = Math.round(releaseAmount * 100);
+    const transferReference = `TEG-RELEASE-${uuidv4()}`;
+
+    const transfer = await this.paystackProvider.initiateTransfer(
+      'balance',
+      releaseAmountInKobo,
+      recipientCode,
+      transferReference,
+      reason || `Release ${releasePercentage}% for quote ${quotation.quoteId}`,
+    );
+
+    const updatedPayment = await this.paymentRepo.updateById(payment._id.toString(), {
+      status: 'RELEASED',
+      releasedAmount: releaseAmount,
+      releasedAt: new Date(),
+      releasedBy: new Types.ObjectId(adminId),
+      paystackTransferReference: transfer.transfer_code,
+    });
+
+    await this.eventRepo.create({
+      quotation: quotation._id,
+      jobRequest: quotation.jobRequest,
+      tradePerson: quotation.tradePerson,
+      eventType: 'PAYMENT_RELEASED',
+      notes: `Admin released ${releasePercentage}% (${releaseAmount}) to tradesperson`,
+      performedBy: new Types.ObjectId(adminId),
+      metadata: { releaseAmount, releasePercentage, transferReference, reason },
+    });
+
+    return this.mapPaymentToDto(updatedPayment);
   }
 
   async markAsResidentPaid(quotationId: string, homeOwnerId?: string): Promise<JobRequestQuotationResponseDto> {
@@ -227,7 +689,7 @@ export class JobRequestQuotationService {
       throw new NotFoundException('Quotation not found');
     }
 
-    if (doc.reviewStatus !== 'ACCEPTED') {
+    if (doc.reviewStatus !== 'HOMEOWNER_ACCEPTED') {
       throw new BadRequestException('Only accepted quotations can be marked as paid');
     }
 
@@ -278,6 +740,11 @@ export class JobRequestQuotationService {
     }));
   }
 
+  async getQuotationRevisions(quotationId: string): Promise<QuotationRevisionResponseDto[]> {
+    const revisions = await this.revisionRepo.findByQuotationId(quotationId);
+    return revisions.map((revision) => this.mapRevisionToDto(revision));
+  }
+
   async getAcceptedQuotationForHomeOwner(homeOwnerId: string, jobRequestId: string): Promise<JobRequestQuotationResponseDto> {
     const jobRequest = await this.jobRequestRepo.findOne({
       _id: new Types.ObjectId(jobRequestId),
@@ -311,7 +778,7 @@ export class JobRequestQuotationService {
       throw new NotFoundException('Job request not found or does not belong to you');
     }
 
-    const docs = await this.quotationRepo.findByJobRequestIdAllPopulated(jobRequestId);
+    const docs = await this.quotationRepo.findVisibleToHomeOwnerByJobRequestId(jobRequestId);
     return docs.map((doc) => this.mapToDto(doc));
   }
 

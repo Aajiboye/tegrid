@@ -71,4 +71,8 @@ export class JobRequestRepository {
       .populate('createdBy', 'phoneNumber userType userName _id')
       .lean();
   }
+
+  async update(id: string, payload: Partial<JobRequest>) {
+    return this.model.findByIdAndUpdate(id, { $set: payload }, { new: true }).lean();
+  }
 }

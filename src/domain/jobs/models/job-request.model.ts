@@ -6,6 +6,12 @@ export enum JobVisibility {
   PRIVATE = 'PRIVATE',
 }
 
+export enum JobStatus {
+  OPEN = 'OPEN',
+  QUOTATION_PAID = 'QUOTATION_PAID',
+  COMPLETED = 'COMPLETED',
+}
+
 @Schema()
 export class JobRequest {
   _id?: Types.ObjectId;
@@ -45,6 +51,9 @@ export class JobRequest {
 
   @Prop({ type: Types.ObjectId, ref: 'HomeOwner', required: true })
   createdBy: Types.ObjectId;
+
+  @Prop({ type: String, enum: JobStatus, default: JobStatus.OPEN })
+  status?: JobStatus;
 
   @Prop()
   createdAt?: Date;

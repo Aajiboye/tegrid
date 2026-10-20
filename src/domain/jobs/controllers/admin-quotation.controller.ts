@@ -5,7 +5,13 @@ import { RoleGuard } from 'src/guards/role.guard';
 import { user } from 'src/decorators/user.decorator';
 import { adaptResponse } from 'src/shared/adapters/response.adapter';
 import { JobRequestQuotationService } from '../services/job-request-quotation.service';
-import { JobRequestQuotationResponseDto, QuotationEventResponseDto, ReviewQuotationDto } from '../dtos/job-request-quotation.dto';
+import {
+  JobRequestQuotationResponseDto,
+  QuotationEventResponseDto,
+  QuotationRevisionResponseDto,
+  ReviewQuotationDto,
+} from '../dtos/job-request-quotation.dto';
+import { PaymentResponseDto, ReleasePaymentDto } from '../dtos/payment.dto';
 
 @ApiTags('Admin Quotations')
 @Controller('v1/admin/quotations')
@@ -38,15 +44,20 @@ export class AdminQuotationController {
   @Post(':quotationId/review-decision')
   @ApiBearerAuth()
   @UseGuards(AuthGuard, RoleGuard)
-  @ApiOperation({ summary: 'Admin: Accept or reject a quotation' })
   @ApiBody({ type: ReviewQuotationDto })
+  @ApiOperation({ summary: 'Admin: Approve or reject a quotation' })
   @ApiResponse({ description: 'Quotation reviewed', type: JobRequestQuotationResponseDto })
   async reviewQuotation(
     @Param('quotationId') quotationId: string,
     @Body() body: ReviewQuotationDto,
     @user() currentUser: any,
   ) {
-    const doc = await this.quotationService.reviewQuotation(quotationId, body.status, body.reason, currentUser._id.toString());
+    const doc = await this.quotationService.reviewQuotation(
+      quotationId,
+      body.status,
+      body.reason,
+      currentUser._id.toString(),
+    );
     return adaptResponse(doc, `Quotation ${body.status.toLowerCase()} successfully`);
   }
 
@@ -58,5 +69,34 @@ export class AdminQuotationController {
   async listEvents(@Param('quotationId') quotationId: string, @Param('tradePersonId') tradePersonId: string) {
     const events = await this.quotationService.getQuotationEvents(quotationId, tradePersonId);
     return adaptResponse(events, 'Quotation events retrieved successfully');
+  }
+
+  @Get(':quotationId/revisions')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RoleGuard)
+  @ApiOperation({ summary: 'Admin: List quotation revision history' })
+  @ApiResponse({ description: 'Revisions retrieved', type: [QuotationRevisionResponseDto] })
+  async listRevisions(@Param('quotationId') quotationId: string) {
+    const docs = await this.quotationService.getQuotationRevisions(quotationId);
+    return adaptResponse(docs, 'Revisions retrieved successfully');
+  }
+
+  @Post(':quotationId/release-payment')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard, RoleGuard)
+  @ApiBody({ type: ReleasePaymentDto })
+  @ApiOperation({ summary: 'Admin: Release configured percentage to tradesperson account' })
+  @ApiResponse({ description: 'Payment released', type: PaymentResponseDto })
+  async releasePayment(
+    @Param('quotationId') quotationId: string,
+    @Body() body: ReleasePaymentDto,
+    @user() currentUser: any,
+  ) {
+    const doc = await this.quotationService.releasePayment(
+      currentUser._id.toString(),
+      quotationId,
+      body.reason,
+    );
+    return adaptResponse(doc, 'Payment released successfully');
   }
 }

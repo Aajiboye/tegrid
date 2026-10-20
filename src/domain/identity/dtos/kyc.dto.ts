@@ -55,6 +55,9 @@ export class BankAccounts {
     @ApiProperty({ example: 'John Doe' })
     accountName: string;
 
-    @ApiProperty({ example: 'XYZ Bank' })
+    @ApiProperty({ example: '058' })
     bankCode: string;
+
+    @ApiPropertyOptional({ example: 'RCP_abc123' })
+    paystackRecipientCode?: string;
 }

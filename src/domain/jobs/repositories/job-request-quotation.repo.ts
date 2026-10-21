@@ -77,7 +77,7 @@ export class JobRequestQuotationRepository {
     return this.model
       .find({
         jobRequest: new Types.ObjectId(jobRequestId),
-        reviewStatus: { $in: ['ADMIN_APPROVED', 'HOMEOWNER_ACCEPTED', 'PAYMENT_COMPLETED'] },
+        reviewStatus: { $in: ['ADMIN_APPROVED', 'HOMEOWNER_REJECTED', 'HOMEOWNER_ACCEPTED', 'PAYMENT_COMPLETED'] },
       })
       .populate('tradePerson', 'email userName profileAvatar _id')
       .lean();

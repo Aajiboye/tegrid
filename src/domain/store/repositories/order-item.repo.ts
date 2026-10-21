@@ -13,7 +13,7 @@ export class OrderItemRepository {
   }
 
   async createMany(payloads: Partial<OrderItem>[]): Promise<OrderItem[]> {
-    return this.model.insertMany(payloads);
+    return this.model.insertMany(payloads) as unknown as OrderItem[];
   }
 
   async findByOrder(orderId: string): Promise<OrderItem[]> {

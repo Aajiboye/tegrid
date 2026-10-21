@@ -75,7 +75,7 @@ export class RentalService {
       available: available >= quantity,
       maxAvailable: Math.max(0, available),
       requestedQuantity: quantity,
-      unitPrice,
+      unitPrice: unitPrice.amount,
       duration,
       currency: unitPrice.currencyCode,
       message: available >= quantity ? undefined : `Only ${available} unit(s) available for the selected dates`,

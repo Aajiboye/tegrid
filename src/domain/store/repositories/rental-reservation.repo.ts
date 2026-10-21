@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { RentalReservation, RentalStatus } from '../models/rental-reservation.model';
+import { RentalReservation } from '../models/rental-reservation.model';
+import { RentalStatus } from '../enums/rental-status.enum';
 
 @Injectable()
 export class RentalReservationRepository {
@@ -13,7 +14,7 @@ export class RentalReservationRepository {
   }
 
   async createMany(payloads: Partial<RentalReservation>[]): Promise<RentalReservation[]> {
-    return this.model.insertMany(payloads);
+    return this.model.insertMany(payloads) as unknown as RentalReservation[];
   }
 
   async findById(id: string): Promise<RentalReservation | null> {

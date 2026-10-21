@@ -1,0 +1,6 @@
+export enum RentalStatus {
+  RESERVED = 'RESERVED',
+  ACTIVE = 'ACTIVE',
+  RETURN_REQUESTED = 'RETURN_REQUESTED',
+  RETURNED = 'RETURNED',
+}

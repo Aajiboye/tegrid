@@ -16,7 +16,7 @@ import { BankController } from './controllers/banks.controller';
     ],
     providers: [WalletService, PaystackWalletProvider, BankListRepository],
     controllers: [BankController],
-    exports: [WalletService],
+    exports: [WalletService, PaystackWalletProvider],
 })
 
 export class WalletModule { }

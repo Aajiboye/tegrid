@@ -1,5 +1,6 @@
 import { Module, Logger } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -11,7 +12,9 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { JwtModule } from '@nestjs/jwt';
 import { CryptoService } from './shared/services/crypto.service';
 import { WalletModule } from './domain/wallet/wallet.module';
+import { MessagingModule } from './domain/messaging/messaging.module';
 import { CompetencyAssessmentModule } from './domain/competency-assessment/competency-assessment.module';
+import { StoreModule } from './domain/store/store.module';
 
 const configService = new ConfigService();
 
@@ -23,6 +26,7 @@ const configService = new ConfigService();
       load: [config],
     }),
     EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
     MongooseModule.forRoot(
       configService.getOrThrow<string>('MONGODB_CONNECTION_STRING'),
     ),
@@ -33,7 +37,9 @@ const configService = new ConfigService();
     UserModule,
     JobsModule,
     WalletModule,
-    CompetencyAssessmentModule
+    MessagingModule,
+    CompetencyAssessmentModule,
+    StoreModule,
   ],
   controllers: [AppController],
   providers: [AppService, TokenService, CryptoService],

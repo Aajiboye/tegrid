@@ -19,7 +19,12 @@ export class AdminAuthController {
     const admin = await this.adminService.login(payload.email, payload.password);
     if (!admin) throw new UnauthorizedException('Invalid credentials');
 
-    const token = this.tokenService.generateAccessToken({ email: admin.email, role: admin.role, _id: (admin as any)._id });
+    const token = this.tokenService.generateAccessToken({
+      email: admin.email,
+      role: admin.role,
+      _id: (admin as any)._id,
+      permissions: admin.permissions || [],
+    });
     return adaptResponse({ token, admin }, 'Login successful');
   }
 

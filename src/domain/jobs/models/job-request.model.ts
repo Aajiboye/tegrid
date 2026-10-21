@@ -6,6 +6,12 @@ export enum JobVisibility {
   PRIVATE = 'PRIVATE',
 }
 
+export enum JobStatus {
+  OPEN = 'OPEN',
+  QUOTATION_PAID = 'QUOTATION_PAID',
+  COMPLETED = 'COMPLETED',
+}
+
 @Schema()
 export class JobRequest {
   _id?: Types.ObjectId;
@@ -45,6 +51,33 @@ export class JobRequest {
 
   @Prop({ type: Types.ObjectId, ref: 'HomeOwner', required: true })
   createdBy: Types.ObjectId;
+
+  @Prop({ type: String, enum: JobStatus, default: JobStatus.OPEN })
+  status?: JobStatus;
+
+  @Prop({ type: String, default: null })
+  verificationCode?: string;
+
+  @Prop({ type: Date, default: null })
+  verificationCodeGeneratedAt?: Date;
+
+  @Prop({ type: Date, default: null })
+  jobCompletedAt?: Date;
+
+  @Prop({ type: Types.ObjectId, ref: 'HomeOwner', default: null })
+  jobCompletedBy?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'TradePerson', default: null })
+  jobCompletionRequestedBy?: Types.ObjectId;
+
+  @Prop({ type: Date, default: null })
+  qaApprovedAt?: Date;
+
+  @Prop({ type: Types.ObjectId, ref: 'Admin', default: null })
+  qaApprovedBy?: Types.ObjectId;
+
+  @Prop({ type: Date, default: null })
+  satisfactoryPeriodEndsAt?: Date;
 
   @Prop()
   createdAt?: Date;

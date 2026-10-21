@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsOptional, IsString, IsNumber, IsDateString, IsArray, IsPositive } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsInt, IsDateString, IsArray, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateJobRequestDto {
@@ -13,9 +14,10 @@ export class CreateJobRequestDto {
   description: string;
 
   @IsOptional()
-  @IsNumber()
-  @IsPositive()
-  @ApiPropertyOptional({ example: 5000, description: 'Budget in smallest currency unit or as number depending on integration' })
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  @ApiPropertyOptional({ example: 500000, description: 'Budget in minor units (e.g., kobo)' })
   budget?: number;
 
   @IsOptional()
@@ -65,7 +67,7 @@ export class JobRequestResponseDto {
   title: string;
   @ApiProperty({ example: 'The kitchen sink is leaking from under the cabinet' })
   description: string;
-  @ApiPropertyOptional({ example: 5000 })
+  @ApiPropertyOptional({ example: 500000, description: 'Budget in minor units (e.g., kobo)' })
   budget?: number;
   @ApiPropertyOptional({ example: 'NGN' })
   currency?: string;

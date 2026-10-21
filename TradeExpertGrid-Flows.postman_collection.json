@@ -1,0 +1,1077 @@
+{
+  "info": {
+    "_postman_id": "tegrid-flows-001",
+    "name": "TradeExpertGrid - Job & Store Flows",
+    "description": "Postman collection for testing the job listing → quotation → revision → payment flow and the store (products → cart → checkout → orders → payments) flow.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Auth",
+      "description": "Obtain bearer tokens for the actors used in the flows.",
+      "item": [
+        {
+          "name": "Home Owner Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"homeowner@example.com\",\n  \"password\": \"Password@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('homeOwnerToken', jsonData.data.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trade Person Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tradeperson/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "tradeperson", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tradeperson@example.com\",\n  \"password\": \"Password@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('tradePersonToken', jsonData.data.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@tradeexpertgrid.com\",\n  \"password\": \"Password@123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.accessToken) {",
+                  "    pm.collectionVariables.set('adminToken', jsonData.data.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Job Flow",
+      "description": "Job listing → quotation → revision → payment → completion → review.",
+      "item": [
+        {
+          "name": "List Job Types",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/job-types?page=1&pageSize=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "job-types"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "50" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.items && jsonData.data.items.length > 0) {",
+                  "    pm.collectionVariables.set('jobTypeId', jsonData.data.items[0]._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Job Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Fix leaking kitchen sink\",\n  \"description\": \"The kitchen sink is leaking from the pipe under the basin. Need a plumber urgently.\",\n  \"budget\": 500000,\n  \"currency\": \"NGN\",\n  \"preferredDate\": \"2026-11-15\",\n  \"preferredTime\": \"14:00\",\n  \"homeAddress\": \"12 Baker Street, Lagos\",\n  \"photos\": [\"https://example.com/leak.jpg\"],\n  \"jobTypeId\": \"{{jobTypeId}}\",\n  \"visibility\": \"PUBLIC\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data._id) {",
+                  "    pm.collectionVariables.set('jobRequestId', jsonData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Job Requests (Home Owner)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs?page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Trade Person: Submit Quotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tradePersonToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotation"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"materials\": [\n    {\n      \"description\": \"PVC pipes\",\n      \"materialCode\": \"PVC-001\",\n      \"quantity\": 5,\n      \"unitPrice\": 50000,\n      \"vat\": 750\n    }\n  ],\n  \"tools\": [\n    {\n      \"description\": \"Pipe wrench\",\n      \"materialCode\": \"WR-001\",\n      \"quantity\": 1,\n      \"unitPrice\": 0,\n      \"vat\": 0\n    }\n  ],\n  \"workmanships\": [\n    {\n      \"description\": \"Labour for fixing leak\",\n      \"price\": 300000\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data._id) {",
+                  "    pm.collectionVariables.set('quotationId', jsonData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trade Person: Get Quotation",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotation"]
+            }
+          }
+        },
+        {
+          "name": "Home Owner: List Quotations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotations",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotations"]
+            }
+          }
+        },
+        {
+          "name": "Home Owner: Accept Quotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotations/{{quotationId}}/accept",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotations", "{{quotationId}}", "accept"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Accepted for immediate work\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Home Owner: Reject Quotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotations/{{quotationId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotations", "{{quotationId}}", "reject"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Price is too high, please revise\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Trade Person: Revise After Home Owner Rejection",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tradePersonToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation/{{quotationId}}/revise",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotation", "{{quotationId}}", "revise"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"materials\": [\n    {\n      \"description\": \"PVC pipes (homeowner rejected revision)\",\n      \"materialCode\": \"PVC-001\",\n      \"quantity\": 3,\n      \"unitPrice\": 40000,\n      \"vat\": 750\n    }\n  ],\n  \"tools\": [],\n  \"workmanships\": [\n    {\n      \"description\": \"Labour for fixing leak\",\n      \"price\": 220000\n    }\n  ],\n  \"changeReason\": \"Reduced price after homeowner feedback\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Trade Person: Revise Quotation (Happy Path)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tradePersonToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation/{{quotationId}}/revise",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotation", "{{quotationId}}", "revise"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"materials\": [\n    {\n      \"description\": \"PVC pipes (revised)\",\n      \"materialCode\": \"PVC-001\",\n      \"quantity\": 4,\n      \"unitPrice\": 45000,\n      \"vat\": 750\n    }\n  ],\n  \"tools\": [],\n  \"workmanships\": [\n    {\n      \"description\": \"Labour for fixing leak\",\n      \"price\": 250000\n    }\n  ],\n  \"changeReason\": \"Reduced material and labour cost\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Trade Person: List Revisions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation/{{quotationId}}/revisions",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotation", "{{quotationId}}", "revisions"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Review Quotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "quotations", "{{quotationId}}", "review"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Approve Quotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/review-decision",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "quotations", "{{quotationId}}", "review-decision"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ADMIN_APPROVED\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Admin: Reject Quotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/review-decision",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "quotations", "{{quotationId}}", "review-decision"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ADMIN_REJECTED\",\n  \"reason\": \"Pricing above market rate, please resubmit\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Trade Person: Revise After Admin Rejection",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tradePersonToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation/{{quotationId}}/revise",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotation", "{{quotationId}}", "revise"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"materials\": [\n    {\n      \"description\": \"PVC pipes (admin rejected revision)\",\n      \"materialCode\": \"PVC-001\",\n      \"quantity\": 3,\n      \"unitPrice\": 40000,\n      \"vat\": 750\n    }\n  ],\n  \"tools\": [],\n  \"workmanships\": [\n    {\n      \"description\": \"Labour for fixing leak\",\n      \"price\": 220000\n    }\n  ],\n  \"changeReason\": \"Reduced price after admin feedback\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Home Owner: Pay Upfront",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotations/{{quotationId}}/pay",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotations", "{{quotationId}}", "pay"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.reference) {",
+                  "    pm.collectionVariables.set('jobPaymentReference', jsonData.data.reference);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Paystack Callback (Job Payment)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/payments/paystack/callback?reference={{jobPaymentReference}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "payments", "paystack", "callback"],
+              "query": [{ "key": "reference", "value": "{{jobPaymentReference}}" }]
+            }
+          }
+        },
+        {
+          "name": "Trade Person: Request Completion",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation/request-completion",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotation", "request-completion"]
+            }
+          }
+        },
+        {
+          "name": "Home Owner: Get Verification Code",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/verification-code",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "verification-code"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.code) {",
+                  "    pm.collectionVariables.set('verificationCode', jsonData.data.code);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Home Owner: Verify Completion Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/verify-code",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "verify-code"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{verificationCode}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Home Owner: Complete Job",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Release Initial Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/release-payment",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "quotations", "{{quotationId}}", "release-payment"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"releaseType\": \"INITIAL\",\n  \"reason\": \"Work started milestone\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Admin: Release Balance Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/release-payment",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "quotations", "{{quotationId}}", "release-payment"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"releaseType\": \"BALANCE\",\n  \"reason\": \"Job completed\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Home Owner: Review Trade Person",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/review",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "review"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Great work, fixed the leak quickly.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Public: List Reviews for Trade Person",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/tradeperson/{{tradePersonId}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "tradeperson", "{{tradePersonId}}", "reviews"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Store Flow",
+      "description": "Admin catalog setup → public browsing → cart → checkout → order → payment → delivery → rental return.",
+      "item": [
+        {
+          "name": "Admin: Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/store/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "store", "categories"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Power Tools\",\n  \"slug\": \"power-tools\",\n  \"description\": \"Electric and battery-powered tools\",\n  \"image\": \"https://example.com/power-tools.jpg\",\n  \"isActive\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data._id) {",
+                  "    pm.collectionVariables.set('categoryId', jsonData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin: List Categories",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/store/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "store", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Create Purchase Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/store/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "store", "products"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bosch Cordless Drill\",\n  \"description\": \"Professional 18V cordless drill\",\n  \"sku\": \"BOS-DRILL-001\",\n  \"category\": \"{{categoryId}}\",\n  \"images\": [\"https://example.com/drill.jpg\"],\n  \"type\": \"PURCHASE\",\n  \"prices\": [\n    {\n      \"currencyCode\": \"NGN\",\n      \"amount\": 500000\n    }\n  ],\n  \"stockQuantity\": 20\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data._id) {",
+                  "    pm.collectionVariables.set('purchaseProductId', jsonData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin: Create Rental Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/store/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "store", "products"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Heavy Duty Concrete Mixer\",\n  \"description\": \"Electric concrete mixer for construction sites\",\n  \"sku\": \"CON-MIXER-001\",\n  \"category\": \"{{categoryId}}\",\n  \"images\": [\"https://example.com/mixer.jpg\"],\n  \"type\": \"RENTAL\",\n  \"stockQuantity\": 5,\n  \"rentalConfig\": {\n    \"granularity\": \"DAILY\",\n    \"pricePerUnit\": [\n      {\n        \"currencyCode\": \"NGN\",\n        \"amount\": 500000\n      }\n    ],\n    \"minimumDuration\": 2,\n    \"quantity\": 5\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data._id) {",
+                  "    pm.collectionVariables.set('rentalProductId', jsonData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin: Submit Product for Approval",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/store/products/{{purchaseProductId}}/submit-approval",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "store", "products", "{{purchaseProductId}}", "submit-approval"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Approve Product",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/store/products/{{purchaseProductId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "store", "products", "{{purchaseProductId}}", "approve"]
+            }
+          }
+        },
+        {
+          "name": "Public: List Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/products?type=PURCHASE&page=1&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "products"],
+              "query": [
+                { "key": "type", "value": "PURCHASE" },
+                { "key": "page", "value": "1" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Public: Get Product Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/products/{{purchaseProductId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "products", "{{purchaseProductId}}"]
+            }
+          }
+        },
+        {
+          "name": "Customer: Create Shipping Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/shipping-addresses",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "shipping-addresses"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Home\",\n  \"recipientName\": \"John Doe\",\n  \"phoneNumber\": \"+2348012345678\",\n  \"addressLine1\": \"123 Main Street\",\n  \"addressLine2\": \"Apt 4B\",\n  \"city\": \"Ikeja\",\n  \"state\": \"Lagos\",\n  \"country\": \"Nigeria\",\n  \"postalCode\": \"100001\",\n  \"isDefault\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data._id) {",
+                  "    pm.collectionVariables.set('shippingAddressId', jsonData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Customer: List Shipping Addresses",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/shipping-addresses",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "shipping-addresses"]
+            }
+          }
+        },
+        {
+          "name": "Customer: Add Item to Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/cart/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "cart", "items"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{purchaseProductId}}\",\n  \"type\": \"PURCHASE\",\n  \"quantity\": 2\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.items && jsonData.data.items.length > 0) {",
+                  "    pm.collectionVariables.set('cartItemId', jsonData.data.items[0]._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Customer: Add Rental Item to Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/cart/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "cart", "items"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{rentalProductId}}\",\n  \"type\": \"RENTAL\",\n  \"quantity\": 1,\n  \"rentalStart\": \"2026-11-01T10:00:00Z\",\n  \"rentalEnd\": \"2026-11-03T10:00:00Z\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Customer: Get Cart",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "cart"]
+            }
+          }
+        },
+        {
+          "name": "Customer: Update Cart Item",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/cart/items/{{cartItemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "cart", "items", "{{cartItemId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 3\n}"
+            }
+          }
+        },
+        {
+          "name": "Customer: Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "checkout"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shippingAddressId\": \"{{shippingAddressId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data) {",
+                  "    pm.collectionVariables.set('storeOrderId', jsonData.data.orderId);",
+                  "    pm.collectionVariables.set('storeOrderNumber', jsonData.data.orderNumber);",
+                  "    pm.collectionVariables.set('storePaymentReference', jsonData.data.reference);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Paystack Callback (Store Payment)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/payments/paystack/callback?reference={{storePaymentReference}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "payments", "paystack", "callback"],
+              "query": [{ "key": "reference", "value": "{{storePaymentReference}}" }]
+            }
+          }
+        },
+        {
+          "name": "Customer: List Orders",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/orders?page=1&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "orders"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Customer: Get Order Detail",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/orders/{{storeOrderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "orders", "{{storeOrderId}}"]
+            }
+          }
+        },
+        {
+          "name": "Customer: Get Order Rentals",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/orders/{{storeOrderId}}/rentals",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "orders", "{{storeOrderId}}", "rentals"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.length > 0) {",
+                  "    pm.collectionVariables.set('rentalReservationId', jsonData.data[0]._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Customer: Request Rental Return",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/store/orders/{{storeOrderId}}/rentals/{{rentalReservationId}}/return",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "store", "orders", "{{storeOrderId}}", "rentals", "{{rentalReservationId}}", "return"]
+            }
+          }
+        },
+        {
+          "name": "Admin: List Orders",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/store/orders?page=1&size=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "store", "orders"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "size", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Admin: Add Tracking Update",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/store/orders/{{storeOrderId}}/tracking",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "store", "orders", "{{storeOrderId}}", "tracking"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_TRANSIT\",\n  \"note\": \"Package left Lagos warehouse\",\n  \"carrier\": \"DHL\",\n  \"trackingNumber\": \"TRK123456789\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Admin: Mark Order Delivered",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/store/orders/{{storeOrderId}}/deliver",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "store", "orders", "{{storeOrderId}}", "deliver"]
+            }
+          }
+        },
+        {
+          "name": "Admin: Confirm Rental Return",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/store/orders/rentals/{{rentalReservationId}}/confirm-return",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "store", "orders", "rentals", "{{rentalReservationId}}", "confirm-return"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "homeOwnerToken", "value": "", "type": "string" },
+    { "key": "tradePersonToken", "value": "", "type": "string" },
+    { "key": "adminToken", "value": "", "type": "string" },
+    { "key": "jobTypeId", "value": "", "type": "string" },
+    { "key": "jobRequestId", "value": "", "type": "string" },
+    { "key": "quotationId", "value": "", "type": "string" },
+    { "key": "jobPaymentReference", "value": "", "type": "string" },
+    { "key": "verificationCode", "value": "", "type": "string" },
+    { "key": "tradePersonId", "value": "", "type": "string" },
+    { "key": "categoryId", "value": "", "type": "string" },
+    { "key": "purchaseProductId", "value": "", "type": "string" },
+    { "key": "rentalProductId", "value": "", "type": "string" },
+    { "key": "shippingAddressId", "value": "", "type": "string" },
+    { "key": "cartItemId", "value": "", "type": "string" },
+    { "key": "storeOrderId", "value": "", "type": "string" },
+    { "key": "storeOrderNumber", "value": "", "type": "string" },
+    { "key": "storePaymentReference", "value": "", "type": "string" },
+    { "key": "rentalReservationId", "value": "", "type": "string" }
+  ]
+}

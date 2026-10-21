@@ -31,11 +31,31 @@ export class JobRequestQuotationRepository {
     return this.model.find({ jobRequest: new Types.ObjectId(jobRequestId) }).lean();
   }
 
-  async findAcceptedByJobRequestId(jobRequestId: string): Promise<JobRequestQuotation> {
-    return this.model.findOne({
-      jobRequest: new Types.ObjectId(jobRequestId),
-      reviewStatus: 'APPROVED',
-    }).lean();
+  async findAdminApprovedByJobRequestId(jobRequestId: string): Promise<JobRequestQuotation | null> {
+    return this.model
+      .findOne({
+        jobRequest: new Types.ObjectId(jobRequestId),
+        reviewStatus: 'ADMIN_APPROVED',
+      })
+      .lean();
+  }
+
+  async findAcceptedByJobRequestId(jobRequestId: string): Promise<JobRequestQuotation | null> {
+    return this.model
+      .findOne({
+        jobRequest: new Types.ObjectId(jobRequestId),
+        reviewStatus: { $in: ['HOMEOWNER_ACCEPTED', 'PAYMENT_COMPLETED'] },
+      })
+      .lean();
+  }
+
+  async findPaidByJobRequestId(jobRequestId: string): Promise<JobRequestQuotation | null> {
+    return this.model
+      .findOne({
+        jobRequest: new Types.ObjectId(jobRequestId),
+        reviewStatus: 'PAYMENT_COMPLETED',
+      })
+      .lean();
   }
 
   async update(id: string, payload: Partial<JobRequestQuotation>): Promise<JobRequestQuotation> {
@@ -53,12 +73,36 @@ export class JobRequestQuotationRepository {
       .lean();
   }
 
+  async findVisibleToHomeOwnerByJobRequestId(jobRequestId: string): Promise<JobRequestQuotation[]> {
+    return this.model
+      .find({
+        jobRequest: new Types.ObjectId(jobRequestId),
+        reviewStatus: { $in: ['ADMIN_APPROVED', 'HOMEOWNER_REJECTED', 'HOMEOWNER_ACCEPTED', 'PAYMENT_COMPLETED'] },
+      })
+      .populate('tradePerson', 'email userName profileAvatar _id')
+      .lean();
+  }
+
   async findByTradePersonId(tradePersonId: string, jobRequestIds?: string[]): Promise<JobRequestQuotation[]> {
     const query: any = { tradePerson: new Types.ObjectId(tradePersonId) };
     if (jobRequestIds?.length) {
       query.jobRequest = { $in: jobRequestIds.map((id) => new Types.ObjectId(id)) };
     }
     return this.model.find(query).lean();
+  }
+
+  async updateIfStatus(
+    id: string,
+    allowedStatuses: string[],
+    payload: Partial<JobRequestQuotation>,
+  ): Promise<JobRequestQuotation | null> {
+    return this.model
+      .findOneAndUpdate(
+        { _id: new Types.ObjectId(id), reviewStatus: { $in: allowedStatuses } },
+        { $set: payload },
+        { new: true },
+      )
+      .lean();
   }
 
   async updateIfPending(id: string, payload: Partial<JobRequestQuotation>): Promise<JobRequestQuotation | null> {
@@ -71,12 +115,15 @@ export class JobRequestQuotationRepository {
       .lean();
   }
 
-  async findAcceptedByJobRequestIdExcludeCurrent(jobRequestId: string, excludeQuotationId: string): Promise<JobRequestQuotation | null> {
+  async findAcceptedByJobRequestIdExcludeCurrent(
+    jobRequestId: string,
+    excludeQuotationId: string,
+  ): Promise<JobRequestQuotation | null> {
     return this.model
       .findOne({
         _id: { $ne: new Types.ObjectId(excludeQuotationId) },
         jobRequest: new Types.ObjectId(jobRequestId),
-        reviewStatus: 'ACCEPTED',
+        reviewStatus: { $in: ['HOMEOWNER_ACCEPTED', 'PAYMENT_COMPLETED'] },
       })
       .lean();
   }

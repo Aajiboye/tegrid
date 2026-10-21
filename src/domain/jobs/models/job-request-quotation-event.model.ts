@@ -6,7 +6,10 @@ export type QuotationEventType =
   | 'ADMIN_REVIEW'
   | 'QUOTE_APPROVED'
   | 'QUOTE_REJECTED'
-  | 'RESIDENT_PAID';
+  | 'RESIDENT_PAID'
+  | 'PAYMENT_RELEASED'
+  | 'JOB_COMPLETED'
+  | 'QA_APPROVED';
 
 @Schema()
 export class JobRequestQuotationEvent {
@@ -18,7 +21,20 @@ export class JobRequestQuotationEvent {
   @Prop({ type: Types.ObjectId, ref: 'JobRequest', required: true })
   jobRequest: Types.ObjectId;
 
-  @Prop({ type: String, enum: ['QUOTE_SUBMITTED', 'ADMIN_REVIEW', 'QUOTE_APPROVED', 'QUOTE_REJECTED', 'RESIDENT_PAID'], required: true })
+  @Prop({
+    type: String,
+    enum: [
+      'QUOTE_SUBMITTED',
+      'ADMIN_REVIEW',
+      'QUOTE_APPROVED',
+      'QUOTE_REJECTED',
+      'RESIDENT_PAID',
+      'PAYMENT_RELEASED',
+      'JOB_COMPLETED',
+      'QA_APPROVED',
+    ],
+    required: true,
+  })
   eventType: QuotationEventType;
 
   @Prop({ type: String, default: null })

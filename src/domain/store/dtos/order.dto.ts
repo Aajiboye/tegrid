@@ -69,10 +69,10 @@ export class OrderItemResponseDto {
   @ApiProperty()
   quantity: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Unit price in minor units (e.g., kobo)' })
   unitPrice: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Total in minor units (e.g., kobo)' })
   total: number;
 
   @ApiProperty()
@@ -104,13 +104,13 @@ export class OrderResponseDto {
   @ApiProperty()
   currency: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Subtotal in minor units (e.g., kobo)' })
   subtotal: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Delivery fee in minor units (e.g., kobo)' })
   deliveryFee: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Total amount in minor units (e.g., kobo)' })
   totalAmount: number;
 
   @ApiProperty({ type: ShippingAddressSnapshotDto })

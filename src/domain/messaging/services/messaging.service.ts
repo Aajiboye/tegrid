@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Types } from 'mongoose';
+import { PaginatedResponse } from 'src/shared/dtos/pagination';
 import { MessageRepository } from '../repositories/message.repo';
 import { Message, MessageType } from '../models/message.model';
 
@@ -82,22 +83,37 @@ export class MessagingService {
     return messages.map((msg) => this.mapToDto(msg));
   }
 
-  async getInbox(userId: string, page = 1, limit = 20) {
+  async getInbox(userId: string, page = 1, limit = 20): Promise<PaginatedResponse<any[]>> {
     const skip = (page - 1) * limit;
-    const messages = await this.messageRepo.findByRecipient(userId, { skip, limit });
-    const unreadCount = await this.messageRepo.countUnread(userId);
-    return {
-      messages: messages.map((msg) => this.mapToDto(msg)),
-      unreadCount,
-      page,
-      limit,
-    };
+    const { items, total } = await this.messageRepo.findByRecipient(userId, { skip, limit });
+    const pageTotal = Math.ceil(total / limit);
+    const response = new PaginatedResponse<any[]>();
+    response.page = page;
+    response.size = limit;
+    response.pageTotal = pageTotal;
+    response.hasNext = page < pageTotal;
+    response.hasPrevious = page > 1;
+    response.data = items.map((msg) => this.mapToDto(msg));
+    return response;
   }
 
-  async getConversation(userId: string, otherUserId: string, page = 1, limit = 20) {
+  async getConversation(
+    userId: string,
+    otherUserId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResponse<any[]>> {
     const skip = (page - 1) * limit;
-    const messages = await this.messageRepo.findConversation(userId, otherUserId, { skip, limit });
-    return messages.map((msg) => this.mapToDto(msg));
+    const { items, total } = await this.messageRepo.findConversation(userId, otherUserId, { skip, limit });
+    const pageTotal = Math.ceil(total / limit);
+    const response = new PaginatedResponse<any[]>();
+    response.page = page;
+    response.size = limit;
+    response.pageTotal = pageTotal;
+    response.hasNext = page < pageTotal;
+    response.hasPrevious = page > 1;
+    response.data = items.map((msg) => this.mapToDto(msg));
+    return response;
   }
 
   async markAsRead(messageId: string, userId: string) {

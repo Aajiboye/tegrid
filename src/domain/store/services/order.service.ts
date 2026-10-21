@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Types } from 'mongoose';
+import { PaginatedResponse } from 'src/shared/dtos/pagination';
 import { OrderRepository, OrderListQuery } from '../repositories/order.repo';
 import { OrderItemRepository } from '../repositories/order-item.repo';
 import { DeliveryTrackingRepository } from '../repositories/delivery-tracking.repo';
@@ -29,16 +30,10 @@ export class OrderService {
     private readonly productRepo: ProductRepository,
   ) {}
 
-  async findByUser(userId: string, userType: UserType, query: OrderQueryDto): Promise<{ items: OrderResponseDto[]; total: number; page: number; size: number }> {
+  async findByUser(userId: string, userType: UserType, query: OrderQueryDto): Promise<PaginatedResponse<OrderResponseDto[]>> {
     const { items, total } = await this.orderRepo.findByUser(userId, userType, query);
     const dtos = await Promise.all(items.map((o) => this.mapOrderToDto(o)));
-
-    return {
-      items: dtos,
-      total,
-      page: query.page || 1,
-      size: query.size || 20,
-    };
+    return this.buildPaginatedResponse(dtos, total, query.page || 1, query.size || 20);
   }
 
   async findById(userId: string, userType: UserType, orderId: string): Promise<OrderResponseDto> {
@@ -62,7 +57,7 @@ export class OrderService {
     return this.mapOrderToDto(order);
   }
 
-  async findAllAdmin(query: AdminOrderQueryDto): Promise<{ items: OrderResponseDto[]; total: number; page: number; size: number }> {
+  async findAllAdmin(query: AdminOrderQueryDto): Promise<PaginatedResponse<OrderResponseDto[]>> {
     const listQuery: OrderListQuery = {
       status: query.status,
       userId: query.userId,
@@ -73,13 +68,7 @@ export class OrderService {
 
     const { items, total } = await this.orderRepo.findWithFilters(listQuery);
     const dtos = await Promise.all(items.map((o) => this.mapOrderToDto(o)));
-
-    return {
-      items: dtos,
-      total,
-      page: query.page || 1,
-      size: query.size || 20,
-    };
+    return this.buildPaginatedResponse(dtos, total, query.page || 1, query.size || 20);
   }
 
   async addTrackingUpdate(orderId: string, dto: AddTrackingUpdateDto): Promise<DeliveryTrackingResponseDto> {
@@ -214,6 +203,18 @@ export class OrderService {
         ? new Date(updated!.returnConfirmedAt).toISOString()
         : undefined,
     };
+  }
+
+  private buildPaginatedResponse<T>(data: T, total: number, page: number, size: number): PaginatedResponse<T> {
+    const pageTotal = Math.ceil(total / size) || 1;
+    const response = new PaginatedResponse<T>();
+    response.page = page;
+    response.size = size;
+    response.pageTotal = pageTotal;
+    response.hasNext = page < pageTotal;
+    response.hasPrevious = page > 1;
+    response.data = data;
+    return response;
   }
 
   private async mapOrderToDto(order: Order): Promise<OrderResponseDto> {

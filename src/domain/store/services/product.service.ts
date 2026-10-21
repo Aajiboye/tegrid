@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Types } from 'mongoose';
+import { PaginatedResponse } from 'src/shared/dtos/pagination';
 import { ProductRepository } from '../repositories/product.repo';
 import { ProductCategoryRepository } from '../repositories/product-category.repo';
 import { Product, MoneyAmount } from '../models/product.model';
@@ -164,7 +165,7 @@ export class ProductService {
   async findApprovedProducts(
     query: ProductQueryDto,
     currency: string,
-  ): Promise<{ items: ProductListItemDto[]; total: number; page: number; size: number }> {
+  ): Promise<PaginatedResponse<ProductListItemDto[]>> {
     const filter: ProductQueryDto = { ...query, page: query.page, size: query.size };
 
     if (query.minPrice !== undefined || query.maxPrice !== undefined) {
@@ -182,12 +183,12 @@ export class ProductService {
         return true;
       });
 
-      return {
-        items: currencyFiltered.map((p) => this.mapToDto(p, currency)),
-        total: currencyFiltered.length,
-        page: query.page || 1,
-        size: query.size || 20,
-      };
+      return this.buildPaginatedResponse(
+        currencyFiltered.map((p) => this.mapToDto(p, currency)),
+        currencyFiltered.length,
+        query.page || 1,
+        query.size || 20,
+      );
     }
 
     const { items, total } = await this.productRepo.findWithFilters({
@@ -195,12 +196,12 @@ export class ProductService {
       status: ProductStatus.APPROVED,
     });
 
-    return {
-      items: items.map((p) => this.mapToDto(p, currency)),
+    return this.buildPaginatedResponse(
+      items.map((p) => this.mapToDto(p, currency)),
       total,
-      page: query.page || 1,
-      size: query.size || 20,
-    };
+      query.page || 1,
+      query.size || 20,
+    );
   }
 
   async findApprovedById(productId: string, currency: string): Promise<ProductListItemDto> {
@@ -220,14 +221,14 @@ export class ProductService {
     return this.mapToDto(product);
   }
 
-  async findAllAdmin(query: ProductQueryDto): Promise<{ items: ProductResponseDto[]; total: number; page: number; size: number }> {
+  async findAllAdmin(query: ProductQueryDto): Promise<PaginatedResponse<ProductResponseDto[]>> {
     const { items, total } = await this.productRepo.findWithFilters(query);
-    return {
-      items: items.map((p) => this.mapToDto(p)),
+    return this.buildPaginatedResponse(
+      items.map((p) => this.mapToDto(p)),
       total,
-      page: query.page || 1,
-      size: query.size || 20,
-    };
+      query.page || 1,
+      query.size || 20,
+    );
   }
 
   async archiveProduct(productId: string): Promise<ProductResponseDto> {
@@ -262,6 +263,18 @@ export class ProductService {
     }
 
     return { currencyCode: target, amount: 0 };
+  }
+
+  private buildPaginatedResponse<T>(data: T, total: number, page: number, size: number): PaginatedResponse<T> {
+    const pageTotal = Math.ceil(total / size) || 1;
+    const response = new PaginatedResponse<T>();
+    response.page = page;
+    response.size = size;
+    response.pageTotal = pageTotal;
+    response.hasNext = page < pageTotal;
+    response.hasPrevious = page > 1;
+    response.data = data;
+    return response;
   }
 
   private normalizeMoneyAmounts(amounts: MoneyAmount[]): MoneyAmount[] {

@@ -5,6 +5,7 @@ import { PermissionGuard } from 'src/guards/permission.guard';
 import { RequirePermissions } from 'src/decorators/require-permissions.decorator';
 import { user } from 'src/decorators/user.decorator';
 import { adaptResponse } from 'src/shared/adapters/response.adapter';
+import { PaginatedResponse } from 'src/shared/dtos/pagination';
 import { STORE_PERMISSIONS } from 'src/domain/identity/permissions/store-permissions';
 import { OrderService } from '../services/order.service';
 import { AdminOrderQueryDto, OrderResponseDto, RentalReservationResponseDto } from '../dtos/order.dto';
@@ -20,7 +21,7 @@ export class AdminOrderController {
   @UseGuards(AuthGuard, PermissionGuard)
   @RequirePermissions(STORE_PERMISSIONS.MANAGE_ORDERS)
   @ApiOperation({ summary: 'List all orders' })
-  @ApiResponse({ type: [OrderResponseDto] })
+  @ApiResponse({ type: PaginatedResponse<OrderResponseDto> })
   async findAll(@Query() query: AdminOrderQueryDto) {
     const result = await this.orderService.findAllAdmin(query);
     return adaptResponse(result, 'Orders retrieved successfully');

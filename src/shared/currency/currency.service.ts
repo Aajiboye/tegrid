@@ -27,11 +27,8 @@ export class CurrencyService {
         style: 'currency',
         currency: currencyCode,
       });
-      // By default we treat amounts as minor units (cents) for backward
-      // compatibility with existing data. To treat amounts as major units
-      // (e.g., 9.99), set PRICE_IN_MINOR_UNITS=false in your environment.
-      const minorUnits = process.env.PRICE_IN_MINOR_UNITS === undefined ? true : String(process.env.PRICE_IN_MINOR_UNITS).toLowerCase() !== 'false';
-      const display = minorUnits ? Number(amount) / 100 : Number(amount);
+      // All amounts are stored and transmitted in minor units (cents/kobo) only.
+      const display = Number(amount) / 100;
       return formatter.format(display);
     } catch (e) {
       return `${currencyCode} ${amount}`;

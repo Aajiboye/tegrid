@@ -1,4 +1,4 @@
-import { IsArray, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsInt, IsMongoId, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -13,19 +13,22 @@ export class MaterialDto {
   @ApiProperty({ example: 'PVC-001' })
   materialCode: string;
 
-  @IsNumber()
+  @IsInt()
   @IsNotEmpty()
+  @Type(() => Number)
   @ApiProperty({ example: 10 })
   quantity: number;
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
-  @ApiPropertyOptional({ example: 500 })
+  @Type(() => Number)
+  @ApiPropertyOptional({ example: 50000, description: 'Unit price in minor units (e.g., kobo)' })
   unitPrice?: number;
 
-  @IsNumber()
+  @IsInt()
   @IsNotEmpty()
-  @ApiProperty({ example: 7.5 })
+  @Type(() => Number)
+  @ApiProperty({ example: 750, description: 'VAT amount in minor units (e.g., kobo)' })
   vat: number;
 }
 
@@ -40,19 +43,22 @@ export class ToolDto {
   @ApiProperty({ example: 'WR-001' })
   materialCode: string;
 
-  @IsNumber()
+  @IsInt()
   @IsNotEmpty()
+  @Type(() => Number)
   @ApiProperty({ example: 2 })
   quantity: number;
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
-  @ApiPropertyOptional({ example: 1500 })
+  @Type(() => Number)
+  @ApiPropertyOptional({ example: 150000, description: 'Unit price in minor units (e.g., kobo)' })
   unitPrice?: number;
 
-  @IsNumber()
+  @IsInt()
   @IsNotEmpty()
-  @ApiProperty({ example: 7.5 })
+  @Type(() => Number)
+  @ApiProperty({ example: 750, description: 'VAT amount in minor units (e.g., kobo)' })
   vat: number;
 }
 
@@ -62,9 +68,10 @@ export class WorkmanshipDto {
   @ApiProperty({ example: 'Labour for pipe installation' })
   description: string;
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
-  @ApiPropertyOptional({ example: 5000 })
+  @Type(() => Number)
+  @ApiPropertyOptional({ example: 500000, description: 'Price in minor units (e.g., kobo)' })
   price?: number;
 }
 

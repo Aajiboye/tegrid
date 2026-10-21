@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsInt, IsNumber, IsOptional, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProductType } from '../enums/product-type.enum';
 
@@ -9,16 +9,16 @@ export class ProductQueryDto {
   @ApiPropertyOptional({ example: 'category-id' })
   category?: string;
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
   @Type(() => Number)
-  @ApiPropertyOptional({ example: 1000 })
+  @ApiPropertyOptional({ example: 100000, description: 'Minimum price in minor units (e.g., kobo)' })
   minPrice?: number;
 
-  @IsNumber()
+  @IsInt()
   @IsOptional()
   @Type(() => Number)
-  @ApiPropertyOptional({ example: 50000 })
+  @ApiPropertyOptional({ example: 5000000, description: 'Maximum price in minor units (e.g., kobo)' })
   maxPrice?: number;
 
   @IsString()

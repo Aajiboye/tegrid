@@ -24,7 +24,7 @@ export class CheckoutResponseDto {
   @ApiProperty()
   reference: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Amount in minor units (e.g., kobo)' })
   amount: number;
 
   @ApiProperty()

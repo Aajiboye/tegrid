@@ -23,27 +23,34 @@ export class MessageRepository {
       .lean();
   }
 
-  async findByRecipient(recipientId: string, options: { skip?: number; limit?: number } = {}): Promise<Message[]> {
-    const query = this.model.find({ recipient: new Types.ObjectId(recipientId) }).sort({ createdAt: -1 });
+  async findByRecipient(
+    recipientId: string,
+    options: { skip?: number; limit?: number } = {},
+  ): Promise<{ items: Message[]; total: number }> {
+    const filter = { recipient: new Types.ObjectId(recipientId) };
+    const query = this.model.find(filter).sort({ createdAt: -1 });
     if (options.skip) query.skip(options.skip);
     if (options.limit) query.limit(options.limit);
-    return query.lean();
+    const [items, total] = await Promise.all([query.lean(), this.model.countDocuments(filter)]);
+    return { items, total };
   }
 
   async findConversation(
     userA: string,
     userB: string,
     options: { skip?: number; limit?: number } = {},
-  ): Promise<Message[]> {
-    const query = this.model.find({
+  ): Promise<{ items: Message[]; total: number }> {
+    const filter = {
       $or: [
         { sender: new Types.ObjectId(userA), recipient: new Types.ObjectId(userB) },
         { sender: new Types.ObjectId(userB), recipient: new Types.ObjectId(userA) },
       ],
-    }).sort({ createdAt: 1 });
+    };
+    const query = this.model.find(filter).sort({ createdAt: 1 });
     if (options.skip) query.skip(options.skip);
     if (options.limit) query.limit(options.limit);
-    return query.lean();
+    const [items, total] = await Promise.all([query.lean(), this.model.countDocuments(filter)]);
+    return { items, total };
   }
 
   async markAsRead(id: string): Promise<Message | null> {

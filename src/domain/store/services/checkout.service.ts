@@ -131,7 +131,7 @@ export class CheckoutService {
     );
 
     const reference = `STR-${uuidv4()}`;
-    const amountInMinorUnits = Math.round(totalAmount * 100);
+    const amountInMinorUnits = totalAmount;
     const apiUrl = this.configService.get<string>('api.apiUrl') || 'http://localhost:8080';
     const callbackUrl = `${apiUrl}/v1/store/payments/paystack/callback`;
 
@@ -242,8 +242,8 @@ export class CheckoutService {
   }
 
   async getDeliveryFee(): Promise<number> {
-    // Flat delivery fee; can be made configurable via config/env
-    return this.configService.get<number>('store.deliveryFee') || 2500;
+    // Flat delivery fee in minor units (e.g., kobo); can be made configurable via config/env
+    return this.configService.get<number>('store.deliveryFee') || 250000;
   }
 
   private async generateOrderNumber(): Promise<string> {

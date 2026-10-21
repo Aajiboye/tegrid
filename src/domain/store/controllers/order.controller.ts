@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { AuthGuard } from 'src/guards/auth.guard';
 import { user } from 'src/decorators/user.decorator';
 import { adaptResponse } from 'src/shared/adapters/response.adapter';
+import { PaginatedResponse } from 'src/shared/dtos/pagination';
 import { OrderService } from '../services/order.service';
 import { OrderQueryDto, OrderResponseDto, RentalReservationResponseDto } from '../dtos/order.dto';
 import { UserType } from 'src/domain/identity/enums/user-types.enum';
@@ -20,7 +21,7 @@ export class OrderController {
 
   @Get()
   @ApiOperation({ summary: 'List user orders' })
-  @ApiResponse({ type: [OrderResponseDto] })
+  @ApiResponse({ type: PaginatedResponse<OrderResponseDto> })
   async findAll(@user() currentUser: any, @Query() query: OrderQueryDto) {
     const result = await this.orderService.findByUser(
       currentUser._id.toString(),

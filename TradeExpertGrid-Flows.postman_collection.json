@@ -151,7 +151,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Fix leaking kitchen sink\",\n  \"description\": \"The kitchen sink is leaking from the pipe under the basin. Need a plumber urgently.\",\n  \"budget\": 5000,\n  \"currency\": \"NGN\",\n  \"preferredDate\": \"2026-11-15\",\n  \"preferredTime\": \"14:00\",\n  \"homeAddress\": \"12 Baker Street, Lagos\",\n  \"photos\": [\"https://example.com/leak.jpg\"],\n  \"jobTypeId\": \"{{jobTypeId}}\",\n  \"visibility\": \"PUBLIC\"\n}"
+              "raw": "{\n  \"title\": \"Fix leaking kitchen sink\",\n  \"description\": \"The kitchen sink is leaking from the pipe under the basin. Need a plumber urgently.\",\n  \"budget\": 500000,\n  \"currency\": \"NGN\",\n  \"preferredDate\": \"2026-11-15\",\n  \"preferredTime\": \"14:00\",\n  \"homeAddress\": \"12 Baker Street, Lagos\",\n  \"photos\": [\"https://example.com/leak.jpg\"],\n  \"jobTypeId\": \"{{jobTypeId}}\",\n  \"visibility\": \"PUBLIC\"\n}"
             }
           },
           "event": [
@@ -200,7 +200,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"materials\": [\n    {\n      \"description\": \"PVC pipes\",\n      \"materialCode\": \"PVC-001\",\n      \"quantity\": 5,\n      \"unitPrice\": 500,\n      \"vat\": 7.5\n    }\n  ],\n  \"tools\": [\n    {\n      \"description\": \"Pipe wrench\",\n      \"materialCode\": \"WR-001\",\n      \"quantity\": 1,\n      \"unitPrice\": 0,\n      \"vat\": 0\n    }\n  ],\n  \"workmanships\": [\n    {\n      \"description\": \"Labour for fixing leak\",\n      \"price\": 3000\n    }\n  ]\n}"
+              "raw": "{\n  \"materials\": [\n    {\n      \"description\": \"PVC pipes\",\n      \"materialCode\": \"PVC-001\",\n      \"quantity\": 5,\n      \"unitPrice\": 50000,\n      \"vat\": 750\n    }\n  ],\n  \"tools\": [\n    {\n      \"description\": \"Pipe wrench\",\n      \"materialCode\": \"WR-001\",\n      \"quantity\": 1,\n      \"unitPrice\": 0,\n      \"vat\": 0\n    }\n  ],\n  \"workmanships\": [\n    {\n      \"description\": \"Labour for fixing leak\",\n      \"price\": 300000\n    }\n  ]\n}"
             }
           },
           "event": [
@@ -262,7 +262,26 @@
           }
         },
         {
-          "name": "Trade Person: Revise Quotation",
+          "name": "Home Owner: Reject Quotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotations/{{quotationId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotations", "{{quotationId}}", "reject"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Price is too high, please revise\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Trade Person: Revise After Home Owner Rejection",
           "request": {
             "method": "POST",
             "header": [
@@ -276,7 +295,26 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"materials\": [\n    {\n      \"description\": \"PVC pipes (revised)\",\n      \"materialCode\": \"PVC-001\",\n      \"quantity\": 4,\n      \"unitPrice\": 450,\n      \"vat\": 7.5\n    }\n  ],\n  \"tools\": [],\n  \"workmanships\": [\n    {\n      \"description\": \"Labour for fixing leak\",\n      \"price\": 2500\n    }\n  ],\n  \"changeReason\": \"Reduced material and labour cost\"\n}"
+              "raw": "{\n  \"materials\": [\n    {\n      \"description\": \"PVC pipes (homeowner rejected revision)\",\n      \"materialCode\": \"PVC-001\",\n      \"quantity\": 3,\n      \"unitPrice\": 40000,\n      \"vat\": 750\n    }\n  ],\n  \"tools\": [],\n  \"workmanships\": [\n    {\n      \"description\": \"Labour for fixing leak\",\n      \"price\": 220000\n    }\n  ],\n  \"changeReason\": \"Reduced price after homeowner feedback\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Trade Person: Revise Quotation (Happy Path)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tradePersonToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation/{{quotationId}}/revise",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotation", "{{quotationId}}", "revise"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"materials\": [\n    {\n      \"description\": \"PVC pipes (revised)\",\n      \"materialCode\": \"PVC-001\",\n      \"quantity\": 4,\n      \"unitPrice\": 45000,\n      \"vat\": 750\n    }\n  ],\n  \"tools\": [],\n  \"workmanships\": [\n    {\n      \"description\": \"Labour for fixing leak\",\n      \"price\": 250000\n    }\n  ],\n  \"changeReason\": \"Reduced material and labour cost\"\n}"
             }
           }
         },
@@ -325,6 +363,58 @@
               "raw": "{\n  \"status\": \"ADMIN_APPROVED\"\n}"
             }
           }
+        },
+        {
+          "name": "Admin: Reject Quotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/review-decision",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "quotations", "{{quotationId}}", "review-decision"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ADMIN_REJECTED\",\n  \"reason\": \"Pricing above market rate, please resubmit\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Trade Person: Submit New Quotation After Admin Rejection",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tradePersonToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotation"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"materials\": [\n    {\n      \"description\": \"PVC pipes (admin rejected resubmission)\",\n      \"materialCode\": \"PVC-001\",\n      \"quantity\": 3,\n      \"unitPrice\": 40000,\n      \"vat\": 750\n    }\n  ],\n  \"tools\": [],\n  \"workmanships\": [\n    {\n      \"description\": \"Labour for fixing leak\",\n      \"price\": 220000\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data._id) {",
+                  "    pm.collectionVariables.set('quotationId', jsonData.data._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "Home Owner: Pay Upfront",
@@ -569,7 +659,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Bosch Cordless Drill\",\n  \"description\": \"Professional 18V cordless drill\",\n  \"sku\": \"BOS-DRILL-001\",\n  \"category\": \"{{categoryId}}\",\n  \"images\": [\"https://example.com/drill.jpg\"],\n  \"type\": \"PURCHASE\",\n  \"prices\": [\n    {\n      \"currencyCode\": \"NGN\",\n      \"amount\": 5000\n    }\n  ],\n  \"stockQuantity\": 20\n}"
+              "raw": "{\n  \"name\": \"Bosch Cordless Drill\",\n  \"description\": \"Professional 18V cordless drill\",\n  \"sku\": \"BOS-DRILL-001\",\n  \"category\": \"{{categoryId}}\",\n  \"images\": [\"https://example.com/drill.jpg\"],\n  \"type\": \"PURCHASE\",\n  \"prices\": [\n    {\n      \"currencyCode\": \"NGN\",\n      \"amount\": 500000\n    }\n  ],\n  \"stockQuantity\": 20\n}"
             }
           },
           "event": [
@@ -602,7 +692,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Heavy Duty Concrete Mixer\",\n  \"description\": \"Electric concrete mixer for construction sites\",\n  \"sku\": \"CON-MIXER-001\",\n  \"category\": \"{{categoryId}}\",\n  \"images\": [\"https://example.com/mixer.jpg\"],\n  \"type\": \"RENTAL\",\n  \"stockQuantity\": 5,\n  \"rentalConfig\": {\n    \"granularity\": \"DAILY\",\n    \"pricePerUnit\": [\n      {\n        \"currencyCode\": \"NGN\",\n        \"amount\": 5000\n      }\n    ],\n    \"minimumDuration\": 2,\n    \"quantity\": 5\n  }\n}"
+              "raw": "{\n  \"name\": \"Heavy Duty Concrete Mixer\",\n  \"description\": \"Electric concrete mixer for construction sites\",\n  \"sku\": \"CON-MIXER-001\",\n  \"category\": \"{{categoryId}}\",\n  \"images\": [\"https://example.com/mixer.jpg\"],\n  \"type\": \"RENTAL\",\n  \"stockQuantity\": 5,\n  \"rentalConfig\": {\n    \"granularity\": \"DAILY\",\n    \"pricePerUnit\": [\n      {\n        \"currencyCode\": \"NGN\",\n        \"amount\": 500000\n      }\n    ],\n    \"minimumDuration\": 2,\n    \"quantity\": 5\n  }\n}"
             }
           },
           "event": [

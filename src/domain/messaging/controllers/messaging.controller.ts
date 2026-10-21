@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { AuthGuard } from 'src/guards/auth.guard';
 import { user } from 'src/decorators/user.decorator';
 import { adaptResponse } from 'src/shared/adapters/response.adapter';
+import { PaginatedResponse } from 'src/shared/dtos/pagination';
 import { MessagingService } from '../services/messaging.service';
 import { MarkMessageReadDto, MessageResponseDto, SendJobMessageDto, SendMessageDto } from '../dtos/message.dto';
 
@@ -65,6 +66,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'List inbox messages for current user' })
+  @ApiResponse({ type: PaginatedResponse<MessageResponseDto> })
   async getInbox(
     @user() currentUser: any,
     @Query('page') page = '1',
@@ -82,6 +84,7 @@ export class MessagingController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'List conversation between current user and another user' })
+  @ApiResponse({ type: PaginatedResponse<MessageResponseDto> })
   async getConversation(
     @user() currentUser: any,
     @Param('otherUserId') otherUserId: string,

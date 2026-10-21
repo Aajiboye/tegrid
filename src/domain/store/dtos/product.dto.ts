@@ -24,10 +24,10 @@ export class MoneyAmountDto {
   @ApiProperty({ example: 'NGN' })
   currencyCode: string;
 
-  @IsNumber()
+  @IsInt()
   @Min(0)
   @Type(() => Number)
-  @ApiProperty({ example: 5000 })
+  @ApiProperty({ example: 500000, description: 'Amount in minor units (e.g., kobo)' })
   amount: number;
 }
 

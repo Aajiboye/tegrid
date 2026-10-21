@@ -31,6 +31,7 @@ import {
 } from '../dtos/product.dto';
 import { ProductQueryDto } from '../dtos/product-query.dto';
 import { adaptResponse } from 'src/shared/adapters/response.adapter';
+import { PaginatedResponse } from 'src/shared/dtos/pagination';
 
 @ApiTags('Admin Store Products')
 @Controller('v1/admin/store/products')
@@ -54,6 +55,7 @@ export class AdminProductController {
   @UseGuards(AuthGuard, PermissionGuard)
   @RequirePermissions(STORE_PERMISSIONS.CREATE_PRODUCT)
   @ApiOperation({ summary: 'List all products (admin)' })
+  @ApiResponse({ type: PaginatedResponse<ProductResponseDto> })
   async findAll(@Query() query: ProductQueryDto) {
     const result = await this.productService.findAllAdmin(query);
     return adaptResponse(result, 'Products retrieved successfully');

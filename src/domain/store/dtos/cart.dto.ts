@@ -64,10 +64,10 @@ export class CartItemResponseDto {
   @ApiProperty()
   quantity: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Unit price in minor units (e.g., kobo)' })
   unitPrice: number;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Total in minor units (e.g., kobo)' })
   total: number;
 
   @ApiProperty()
@@ -102,7 +102,7 @@ export class CartResponseDto {
   @ApiProperty({ type: [CartItemResponseDto] })
   items: CartItemResponseDto[];
 
-  @ApiProperty()
+  @ApiProperty({ description: 'Subtotal in minor units (e.g., kobo)' })
   subtotal: number;
 
   @ApiProperty()

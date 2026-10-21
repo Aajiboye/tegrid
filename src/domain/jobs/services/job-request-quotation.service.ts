@@ -216,7 +216,14 @@ export class JobRequestQuotationService {
       tradePerson: new Types.ObjectId(tradePersonId),
     });
 
-    if (existing) throw new BadRequestException('You have already submitted a quotation for this job request');
+    if (existing && existing.reviewStatus !== 'ADMIN_REJECTED') {
+      throw new BadRequestException('You have already submitted a quotation for this job request');
+    }
+
+    // If the previous quotation was rejected by admin, allow the tradesperson to submit a new one.
+    if (existing && existing.reviewStatus === 'ADMIN_REJECTED') {
+      await this.quotationRepo.deleteById(existing._id.toString());
+    }
 
     const quoteId = await this.generateQuoteId();
     const totalAmount = this.calculateTotalAmount(dto);
@@ -542,12 +549,12 @@ export class JobRequestQuotationService {
     }
 
     const reference = `TEG-${uuidv4()}`;
-    const amountInKobo = Math.round((doc.totalAmount || 0) * 100);
+    const amountInMinorUnits = doc.totalAmount || 0;
     const callbackUrl = this.configService.get<string>('payment.callbackUrl');
 
     const initialized = await this.paystackProvider.initializeTransaction(
       homeOwnerEmail,
-      amountInKobo,
+      amountInMinorUnits,
       reference,
       callbackUrl,
       {
@@ -573,7 +580,7 @@ export class JobRequestQuotationService {
       authorizationUrl: initialized.authorization_url,
       accessCode: initialized.access_code,
       reference: initialized.reference,
-      amount: amountInKobo,
+      amount: amountInMinorUnits,
       currency: jobRequest.currency || 'NGN',
     };
   }
@@ -592,7 +599,7 @@ export class JobRequestQuotationService {
     if (verification.status && verification.data?.status === 'success') {
       const updatedPayment = await this.paymentRepo.updateByReference(reference, {
         status: 'SUCCESS',
-        amount: verification.data.amount / 100,
+        amount: verification.data.amount,
       });
 
       const quotation = await this.quotationRepo.update(payment.quotation.toString(), {
@@ -620,7 +627,7 @@ export class JobRequestQuotationService {
         eventType: 'RESIDENT_PAID',
         notes: 'Homeowner completed payment for the accepted quotation',
         performedBy: payment.homeOwner,
-        metadata: { reference, amount: verification.data.amount / 100, verificationCode },
+        metadata: { reference, amount: verification.data.amount, verificationCode },
       });
 
       return this.mapPaymentToDto(updatedPayment);
@@ -738,22 +745,21 @@ export class JobRequestQuotationService {
     const releasePercentage = this.configService.get<number>('payment.upfrontReleasePercentage') || 50;
     let releaseAmount: number;
     if (releaseType === 'INITIAL') {
-      releaseAmount = Math.round((payment.amount * (releasePercentage / 100)) * 100) / 100;
+      releaseAmount = Math.round(payment.amount * (releasePercentage / 100));
     } else {
       const initialRelease = await this.releaseRepo.findSuccessfulByPaymentIdAndType(
         payment._id.toString(),
         'INITIAL',
       );
       const alreadyReleased = initialRelease?.amount || 0;
-      releaseAmount = Math.round((payment.amount - alreadyReleased) * 100) / 100;
+      releaseAmount = payment.amount - alreadyReleased;
     }
 
-    const releaseAmountInKobo = Math.round(releaseAmount * 100);
     const transferReference = `TEG-RELEASE-${uuidv4()}`;
 
     const transfer = await this.paystackProvider.initiateTransfer(
       'balance',
-      releaseAmountInKobo,
+      releaseAmount,
       recipientCode,
       transferReference,
       reason || `${releaseType} release for quote ${quotation.quoteId}`,

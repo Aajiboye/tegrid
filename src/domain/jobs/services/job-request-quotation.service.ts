@@ -216,14 +216,7 @@ export class JobRequestQuotationService {
       tradePerson: new Types.ObjectId(tradePersonId),
     });
 
-    if (existing && existing.reviewStatus !== 'ADMIN_REJECTED') {
-      throw new BadRequestException('You have already submitted a quotation for this job request');
-    }
-
-    // If the previous quotation was rejected by admin, allow the tradesperson to submit a new one.
-    if (existing && existing.reviewStatus === 'ADMIN_REJECTED') {
-      await this.quotationRepo.deleteById(existing._id.toString());
-    }
+    if (existing) throw new BadRequestException('You have already submitted a quotation for this job request');
 
     const quoteId = await this.generateQuoteId();
     const totalAmount = this.calculateTotalAmount(dto);
@@ -320,8 +313,8 @@ export class JobRequestQuotationService {
       throw new ForbiddenException('Only the tradesperson who submitted this quotation can revise it');
     }
 
-    if (doc.reviewStatus !== 'HOMEOWNER_REJECTED') {
-      throw new BadRequestException('Only homeowner-rejected quotations can be revised');
+    if (!['HOMEOWNER_REJECTED', 'ADMIN_REJECTED'].includes(doc.reviewStatus)) {
+      throw new BadRequestException('Only rejected quotations can be revised');
     }
 
     const nextRevisionNumber = (doc.currentRevisionNumber || 0) + 1;

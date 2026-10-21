@@ -384,7 +384,7 @@
           }
         },
         {
-          "name": "Trade Person: Submit New Quotation After Admin Rejection",
+          "name": "Trade Person: Revise After Admin Rejection",
           "request": {
             "method": "POST",
             "header": [
@@ -392,29 +392,15 @@
               { "key": "Authorization", "value": "Bearer {{tradePersonToken}}" }
             ],
             "url": {
-              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation",
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation/{{quotationId}}/revise",
               "host": ["{{baseUrl}}"],
-              "path": ["v1", "jobs", "{{jobRequestId}}", "quotation"]
+              "path": ["v1", "jobs", "{{jobRequestId}}", "quotation", "{{quotationId}}", "revise"]
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"materials\": [\n    {\n      \"description\": \"PVC pipes (admin rejected resubmission)\",\n      \"materialCode\": \"PVC-001\",\n      \"quantity\": 3,\n      \"unitPrice\": 40000,\n      \"vat\": 750\n    }\n  ],\n  \"tools\": [],\n  \"workmanships\": [\n    {\n      \"description\": \"Labour for fixing leak\",\n      \"price\": 220000\n    }\n  ]\n}"
+              "raw": "{\n  \"materials\": [\n    {\n      \"description\": \"PVC pipes (admin rejected revision)\",\n      \"materialCode\": \"PVC-001\",\n      \"quantity\": 3,\n      \"unitPrice\": 40000,\n      \"vat\": 750\n    }\n  ],\n  \"tools\": [],\n  \"workmanships\": [\n    {\n      \"description\": \"Labour for fixing leak\",\n      \"price\": 220000\n    }\n  ],\n  \"changeReason\": \"Reduced price after admin feedback\"\n}"
             }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "var jsonData = pm.response.json();",
-                  "if (jsonData.data && jsonData.data._id) {",
-                  "    pm.collectionVariables.set('quotationId', jsonData.data._id);",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ]
+          }
         },
         {
           "name": "Home Owner: Pay Upfront",

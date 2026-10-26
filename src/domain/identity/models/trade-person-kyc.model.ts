@@ -44,6 +44,18 @@ export class TradePersonKycProfile {
     @Prop()
     homeAddress?: string;
 
+    @Prop({
+        type: {
+            type: String,
+            enum: ['Point'],
+        },
+        coordinates: [Number],
+    })
+    location?: {
+        type: 'Point';
+        coordinates: [number, number];
+    };
+
     @Prop({ type: String})
     healthAndSafetyCertificateUrl?: string;
 
@@ -79,3 +91,4 @@ export class TradePersonKycProfile {
 export const TradePersonKycProfileSchema = SchemaFactory.createForClass(TradePersonKycProfile);
 
 TradePersonKycProfileSchema.set('timestamps', true);
+TradePersonKycProfileSchema.index({ location: '2dsphere' });

@@ -49,6 +49,7 @@ export class HomeOwnerKycService extends BaseAuthService implements IHomeOwnerKy
             photoIdUrl: profile.photoIdUrl,
             address: profile.address,
             addressProofUrl: profile.addressProofUrl,
+            location: profile.location,
             status: profile.status,
             reasonForRejection: profile.status === 'REJECTED' ? profile.rejectionReason : null,
         };
@@ -132,6 +133,7 @@ export class HomeOwnerKycService extends BaseAuthService implements IHomeOwnerKy
             photoIdUrl: saved.photoIdUrl,
             address: saved.address,
             addressProofUrl: saved.addressProofUrl,
+            location: saved.location,
         };
     }
 
@@ -153,6 +155,7 @@ export class HomeOwnerKycService extends BaseAuthService implements IHomeOwnerKy
             photoIdUrl: saved.photoIdUrl,
             address: saved.address,
             addressProofUrl: saved.addressProofUrl,
+            location: saved.location,
         };
     }
 
@@ -165,8 +168,19 @@ export class HomeOwnerKycService extends BaseAuthService implements IHomeOwnerKy
         return this.cryptoService.decrypt(profile.identityData, encryptionKey);
     }
 
-    async completeAddressVerification(user: HomeOwner, address: string, addressProofUrl: string): Promise<HomeOwnerProfileDto> {
+    async completeAddressVerification(
+        user: HomeOwner,
+        address: string,
+        addressProofUrl: string,
+        location?: { type: 'Point'; coordinates: [number, number] },
+    ): Promise<HomeOwnerProfileDto> {
         const profile: HomeOwnerKycProfile = { address, addressProofUrl };
+        if (location?.coordinates?.length === 2) {
+            profile.location = {
+                type: 'Point',
+                coordinates: location.coordinates,
+            };
+        }
         const saved = await this.homeOwnerKycRepo.updateWithUpsert({ user: new mongoose.Types.ObjectId(user._id) }, profile);
         return {
             _id: saved._id.toString(),
@@ -177,6 +191,7 @@ export class HomeOwnerKycService extends BaseAuthService implements IHomeOwnerKy
             photoIdUrl: saved.photoIdUrl,
             address: saved.address,
             addressProofUrl: saved.addressProofUrl,
+            location: saved.location,
         };
     }
 

@@ -46,6 +46,7 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
             addressProofUrl: profile.addressProofUrl,
             dob: profile.dob,
             homeAddress: profile.homeAddress,
+            location: profile.location,
             healthAndSafetyCertificateUrl: profile.healthAndSafetyCertificateUrl,
             healthAndSafetyCertificateExpiryDate: profile.healthAndSafetyCertificateExpiryDate,
             healthAndSafetyCertificateIssueDate: profile.healthAndSafetyCertificateIssueDate,
@@ -157,8 +158,19 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
         return this.cryptoService.decrypt(profile.identityData, encryptionKey);
     }
 
-    async completeAddressVerification(user: TradePerson, address: string, addressProofUrl: string): Promise<TradePersonProfileDto> {
-        const profile: any = { address, addressProofUrl };
+    async completeAddressVerification(
+        user: TradePerson,
+        address: string,
+        addressProofUrl: string,
+        location?: { type: 'Point'; coordinates: [number, number] },
+    ): Promise<TradePersonProfileDto> {
+        const profile: any = { address, addressProofUrl, homeAddress: address };
+        if (location?.coordinates?.length === 2) {
+            profile.location = {
+                type: 'Point',
+                coordinates: location.coordinates,
+            };
+        }
         const saved = await this.tradePersonKycRepo.updateWithUpsert({ user: new mongoose.Types.ObjectId(user._id) }, profile);
         return this.mapProfileToDto(saved);
     }

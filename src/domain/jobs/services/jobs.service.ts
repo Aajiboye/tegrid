@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JobTypeRepository } from '../repositories/job-type.repo';
 import { JobRequestRepository } from '../repositories/job-request.repo';
 import { CreateJobRequestDto, JobRequestResponseDto } from '../dtos/job-request.dto';
@@ -9,6 +10,8 @@ import { UserType } from 'src/domain/identity/enums/user-types.enum';
 import { TradePersonUserRepository } from '../../identity/repositories/trade-person-user.repo';
 import { HomeOwnerKycService } from 'src/domain/identity/services/home-owner-kyc.service';
 import { TradePersonKycService } from 'src/domain/identity/services/trade-person-kyc.service';
+import { TradePersonKycRepository } from '../../identity/repositories/trade-person-kyc.repo';
+import { NotificationService } from '../../notifications/services/notification.service';
 
 @Injectable()
 export class JobsService {
@@ -16,8 +19,11 @@ export class JobsService {
     private readonly jobTypeRepo: JobTypeRepository,
     private readonly jobReqRepo: JobRequestRepository,
     private readonly tradePersonUserRepo: TradePersonUserRepository,
+    private readonly tradePersonKycRepo: TradePersonKycRepository,
     private readonly homeOwnerKycService: HomeOwnerKycService,
     private readonly tradePersonKycService: TradePersonKycService,
+    private readonly notificationService: NotificationService,
+    private readonly configService: ConfigService,
   ) {}
 
   private mapJobRequestToDto(it: any) {
@@ -30,6 +36,7 @@ export class JobsService {
       preferredDate: it.preferredDate ? new Date(it.preferredDate).toISOString() : undefined,
       preferredTime: it.preferredTime,
       homeAddress: it.homeAddress,
+      location: it.location,
       photos: it.photos || [],
       visibility: it.visibility,
       jobType: it.jobType,
@@ -95,6 +102,10 @@ export class JobsService {
       preferredDate: dto.preferredDate ? new Date(dto.preferredDate) : undefined,
       preferredTime: dto.preferredTime,
       homeAddress: dto.homeAddress,
+      location:
+        dto.locationCoordinates?.length === 2
+          ? { type: 'Point', coordinates: dto.locationCoordinates }
+          : undefined,
       photos: dto.photos || [],
       visibility: dto.visibility || 'PUBLIC',
       tradespersonId: dto.tradespersonId && dto.visibility === 'PRIVATE' ? new Types.ObjectId(dto.tradespersonId) : undefined,
@@ -116,6 +127,51 @@ export class JobsService {
     }
 
     const doc = await this.jobReqRepo.create(payload);
+
+    if (payload.visibility === 'PRIVATE' && dto.tradespersonId) {
+      await this.notificationService.create({
+        userId: dto.tradespersonId,
+        userType: UserType.TRADESPERSON,
+        type: 'JOB_MATCHED',
+        title: 'New job matched for you',
+        message: `A new private job "${doc.title}" has been matched to you.`,
+        data: {
+          jobRequestId: doc._id.toString(),
+          screen: 'JobDetails',
+        },
+      });
+    }
+
+    if (payload.visibility === 'PUBLIC' && doc.location?.coordinates?.length === 2) {
+      const radiusKm = this.configService.get<number>('serviceRadiusKm') || 10;
+      const maxDistanceMeters = radiusKm * 1000;
+      const nearbyKycProfiles = await this.tradePersonKycRepo.findNearLocationWithUser(
+        doc.location.coordinates,
+        maxDistanceMeters,
+      );
+
+      for (const kycProfile of nearbyKycProfiles) {
+        const tradePerson = (kycProfile as any).user;
+        if (!tradePerson || tradePerson.deletedAt) continue;
+        const tradePersonMainTradeId =
+          tradePerson.mainTradeCategory?._id?.toString() ||
+          tradePerson.mainTradeCategory?.toString();
+        if (tradePersonMainTradeId !== doc.jobType.toString()) continue;
+
+        await this.notificationService.create({
+          userId: tradePerson._id.toString(),
+          userType: UserType.TRADESPERSON,
+          type: 'JOB_MATCHED',
+          title: 'New job matched for you',
+          message: `A new job "${doc.title}" matching your trade has been posted near you.`,
+          data: {
+            jobRequestId: doc._id.toString(),
+            screen: 'JobDetails',
+          },
+        });
+      }
+    }
+
     return this.mapJobRequestToDto(doc);
   }
 
@@ -123,15 +179,46 @@ export class JobsService {
     const query: any = {};
     if (search) query['title'] = { $regex: search, $options: 'i' };
     if (user.userType === UserType.TRADESPERSON) {
-      query['$or'] = [
-        { visibility: 'PUBLIC' },
-        { visibility: 'PRIVATE', tradespersonId: new Types.ObjectId(user._id) },
-      ];
+      const visibilityFilter = {
+        $or: [
+          { visibility: 'PUBLIC' },
+          { visibility: 'PRIVATE', tradespersonId: new Types.ObjectId(user._id) },
+        ],
+      };
+
+      let kycLocation: { type: 'Point'; coordinates: [number, number] } | null = null;
+      try {
+        const kycProfile = await this.tradePersonKycService.getKycProfile(user as any);
+        kycLocation = kycProfile?.location || null;
+      } catch {
+        kycLocation = null;
+      }
+
+      if (kycLocation?.coordinates?.length === 2) {
+        const radiusKm = this.configService.get<number>('serviceRadiusKm') || 10;
+        const maxDistanceMeters = radiusKm * 1000;
+        query['$and'] = [
+          {
+            location: {
+              $nearSphere: {
+                $geometry: {
+                  type: 'Point',
+                  coordinates: kycLocation.coordinates,
+                },
+                $maxDistance: maxDistanceMeters,
+              },
+            },
+          },
+          visibilityFilter,
+        ];
+      } else {
+        query['$or'] = visibilityFilter.$or;
+      }
     } else {
       query['visibility'] = 'PUBLIC';
       query['createdBy'] = new Types.ObjectId(user._id);
     }
-    
+
     const paged = await this.jobReqRepo.findPaged(query, pageOptions, undefined, { createdAt: -1 });
     const mapped = new PaginatedResponse<JobRequestResponseDto[]>();
     mapped.page = paged.page;

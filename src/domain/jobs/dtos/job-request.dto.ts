@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, IsInt, IsDateString, IsArray, Min } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsInt, IsDateString, IsArray, IsNumber, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -42,6 +42,16 @@ export class CreateJobRequestDto {
 
   @IsOptional()
   @IsArray()
+  @IsNumber({}, { each: true })
+  @ApiPropertyOptional({
+    type: [Number],
+    example: [3.3792, 6.5244],
+    description: 'GeoJSON Point coordinates as [longitude, latitude]',
+  })
+  locationCoordinates?: [number, number];
+
+  @IsOptional()
+  @IsArray()
   @ApiPropertyOptional({ example: ['https://.../photo1.jpg'], description: 'Optional list of photo URLs to help describe the job' })
   photos?: string[];
 
@@ -77,6 +87,8 @@ export class JobRequestResponseDto {
   preferredTime?: string;
   @ApiProperty({ example: '12 Baker Street, Lagos' })
   homeAddress: string;
+  @ApiPropertyOptional({ type: Object, description: 'GeoJSON Point' })
+  location?: { type: 'Point'; coordinates: [number, number] };
   @ApiProperty({ type: [String] })
   photos: string[];
   @ApiProperty({ example: 'PUBLIC' })

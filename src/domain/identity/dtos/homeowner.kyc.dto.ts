@@ -23,6 +23,11 @@ export class HomeOwnerProfileDto{
     address?: string;
     @ApiPropertyOptional()
     addressProofUrl?: string;
+    @ApiPropertyOptional()
+    location?: {
+        type: 'Point';
+        coordinates: [number, number];
+    };
     @ApiPropertyOptional({ enum: ['PENDING', 'APPROVED', 'REJECTED'] })
     status?: 'PENDING' | 'APPROVED' | 'REJECTED';
     @ApiPropertyOptional({ description: 'Reason for rejection when status is REJECTED' })
@@ -78,6 +83,17 @@ export class HomeOwnerAddressVerificationDto{
     @ApiProperty({ example: 'https://.../address-proof.jpg' })
     @IsString()
     addressProofUrl: string;
+
+    @IsOptional()
+    @ApiPropertyOptional({
+        type: () => Object,
+        example: { type: 'Point', coordinates: [3.3792, 6.5244] },
+        description: 'GeoJSON Point with [longitude, latitude]',
+    })
+    location?: {
+        type: 'Point';
+        coordinates: [number, number];
+    };
 }
 
 export class HomeOwnerKycRejectionDto{

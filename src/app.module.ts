@@ -13,6 +13,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { CryptoService } from './shared/services/crypto.service';
 import { WalletModule } from './domain/wallet/wallet.module';
 import { MessagingModule } from './domain/messaging/messaging.module';
+import { NotificationsModule } from './domain/notifications/notifications.module';
 import { CompetencyAssessmentModule } from './domain/competency-assessment/competency-assessment.module';
 import { StoreModule } from './domain/store/store.module';
 
@@ -38,6 +39,7 @@ const configService = new ConfigService();
     JobsModule,
     WalletModule,
     MessagingModule,
+    NotificationsModule,
     CompetencyAssessmentModule,
     StoreModule,
   ],

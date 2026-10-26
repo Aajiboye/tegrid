@@ -13,6 +13,7 @@ export const config = (): ConfigProps => ({
     paystackPublicKey: process.env.PAYSTACK_PUBLIC_KEY || '',
     callbackUrl: process.env.PAYSTACK_CALLBACK_URL || `${process.env.API_URL || 'http://localhost:8080'}/v1/payments/paystack/callback`,
   },
+  serviceRadiusKm: parseFloat(process.env.SERVICE_RADIUS_KM) || 10,
   appEnv: process.env.APP_ENV || 'development',
   frontEndLink: process.env.FRONTEND_LINK || 'http://localhost:3000',
 });

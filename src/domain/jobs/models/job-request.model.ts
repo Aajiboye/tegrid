@@ -40,6 +40,18 @@ export class JobRequest {
   @Prop({ type: String })
   homeAddress: string;
 
+  @Prop({
+    type: {
+      type: String,
+      enum: ['Point'],
+    },
+    coordinates: [Number],
+  })
+  location?: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+
   @Prop({ type: [String], default: [] })
   photos: string[];
 
@@ -88,3 +100,4 @@ export class JobRequest {
 
 export const JobRequestSchema = SchemaFactory.createForClass(JobRequest);
 JobRequestSchema.set('timestamps', true);
+JobRequestSchema.index({ location: '2dsphere' });

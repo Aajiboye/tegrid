@@ -13,13 +13,13 @@ export class Message {
   @Prop({ type: Types.ObjectId, ref: 'JobRequest', default: null })
   jobRequest?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, required: true })
   sender: Types.ObjectId;
 
   @Prop({ type: String, required: true })
   senderType: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, required: true })
   recipient: Types.ObjectId;
 
   @Prop({ type: String, required: true })

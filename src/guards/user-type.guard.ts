@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { UserType } from '../domain/identity/enums/user-types.enum';
+import { Role } from '../domain/identity/enums/roles.enum';
 
 @Injectable()
 export class UserTypeGuard implements CanActivate {
@@ -19,6 +20,10 @@ export class UserTypeGuard implements CanActivate {
 
     if (!user) {
       throw new ForbiddenException('User not authenticated');
+    }
+
+    if (user.role === Role.Root) {
+      return true;
     }
 
     if (user.userType !== requiredUserType) {

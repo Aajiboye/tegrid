@@ -33,6 +33,7 @@ import { TradePersonKycProfile, TradePersonKycProfileSchema } from '../identity/
 import { AuditModule } from 'src/shared/audit.module';
 import { WalletModule } from '../wallet/wallet.module';
 import { MessagingModule } from '../messaging/messaging.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { AdminQuotationController } from './controllers/admin-quotation.controller';
 import { HomeOwnerQuotationController } from './controllers/home-owner-quotation.controller';
 import { TradePersonContractController } from './controllers/trade-person-contract.controller';
@@ -56,6 +57,7 @@ import { TradePersonContractController } from './controllers/trade-person-contra
         forwardRef(() => AuditModule),
         forwardRef(() => WalletModule),
         forwardRef(() => MessagingModule),
+        NotificationsModule,
     ],
     providers: [
         JobTypeRepository,

@@ -130,6 +130,7 @@ import { TradePersonListingController } from './controllers/trade-person-listing
     AdminService,
     AdminRepository,
     TradePersonKycService,
+    TradePersonKycRepository,
     IDENTITY_VERIFIER,
   ],
 })

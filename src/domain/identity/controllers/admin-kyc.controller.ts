@@ -9,6 +9,7 @@ import { HomeOwnerKycRejectionDto, HomeOwnerProfileDto } from '../dtos/homeowner
 import { TradePersonKycService } from '../services/trade-person-kyc.service';
 import { HomeOwnerKycService } from '../services/home-owner-kyc.service';
 import { HomeOwner } from '../models/home-owner-user.model';
+import { Admin } from '../models/admin.model';
 
 @ApiTags('Admin KYC')
 @Controller('v1/admin/kyc')
@@ -24,7 +25,7 @@ export class AdminKycController {
   @UseGuards(AuthGuard, RoleGuard)
   @ApiOperation({ summary: 'Admin: Approve a TradePerson KYC' })
   @ApiResponse({ description: 'KYC approved', type: TradePersonProfileDto })
-  async approveTradePersonKyc(@user() user: HomeOwner, @Param('id') id: string) {
+  async approveTradePersonKyc(@user() user: Admin, @Param('id') id: string) {
     const res = await this.tradePersonKycService.approveKyc(id, user._id.toString());
     return adaptResponse(res, 'KYC approved');
   }
@@ -34,7 +35,7 @@ export class AdminKycController {
   @UseGuards(AuthGuard, RoleGuard)
   @ApiOperation({ summary: 'Admin: Reject a TradePerson KYC' })
   @ApiResponse({ description: 'KYC rejected', type: TradePersonProfileDto })
-  async rejectTradePersonKyc(@user() user: HomeOwner, @Param('id') id: string, @Body() payload: TradePersonKycRejectionDto) {
+  async rejectTradePersonKyc(@user() user: Admin, @Param('id') id: string, @Body() payload: TradePersonKycRejectionDto) {
     const res = await this.tradePersonKycService.rejectKyc(id, user._id.toString(), payload.reason);
     return adaptResponse(res, 'KYC rejected');
   }
@@ -45,7 +46,7 @@ export class AdminKycController {
   @UseGuards(AuthGuard, RoleGuard)
   @ApiOperation({ summary: 'Admin: Approve a HomeOwner KYC' })
   @ApiResponse({ description: 'KYC approved', type: HomeOwnerProfileDto })
-  async approveHomeOwnerKyc(@user() user: HomeOwner, @Param('id') id: string) {
+  async approveHomeOwnerKyc(@user() user: Admin, @Param('id') id: string) {
     const res = await this.homeOwnerKycService.approveKyc(id, user._id.toString());
     return adaptResponse(res, 'KYC approved');
   }
@@ -55,7 +56,7 @@ export class AdminKycController {
   @UseGuards(AuthGuard, RoleGuard)
   @ApiOperation({ summary: 'Admin: Reject a HomeOwner KYC' })
   @ApiResponse({ description: 'KYC rejected', type: HomeOwnerProfileDto })
-  async rejectHomeOwnerKyc(@user() user: HomeOwner, @Param('id') id: string, @Body() payload: HomeOwnerKycRejectionDto) {
+  async rejectHomeOwnerKyc(@user() user: Admin, @Param('id') id: string, @Body() payload: HomeOwnerKycRejectionDto) {
     const res = await this.homeOwnerKycService.rejectKyc(id, user._id.toString(), payload.reason);
     return adaptResponse(res, 'KYC rejected');
   }

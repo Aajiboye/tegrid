@@ -31,6 +31,8 @@ import { CreateReviewDto, ReviewResponseDto } from '../dtos/review.dto';
 import { JobStatus } from '../models/job-request.model';
 import { ReleaseRepository } from '../repositories/release.repo';
 import { ReviewRepository } from '../repositories/review.repo';
+import { NotificationService } from '../../notifications/services/notification.service';
+import { UserType } from '../../identity/enums/user-types.enum';
 
 @Injectable()
 export class JobRequestQuotationService {
@@ -47,6 +49,7 @@ export class JobRequestQuotationService {
     private readonly reviewRepo: ReviewRepository,
     private readonly paystackProvider: PaystackWalletProvider,
     private readonly messagingService: MessagingService,
+    private readonly notificationService: NotificationService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -418,6 +421,22 @@ export class JobRequestQuotationService {
       metadata: { previousStatus: doc.reviewStatus, reason },
     });
 
+    await this.notificationService.create({
+      userId: updated.tradePerson.toString(),
+      userType: UserType.TRADESPERSON,
+      type: status === 'ADMIN_APPROVED' ? 'QUOTE_APPROVED' : 'QUOTE_REJECTED',
+      title: status === 'ADMIN_APPROVED' ? 'Quote approved' : 'Quote rejected',
+      message:
+        status === 'ADMIN_APPROVED'
+          ? `Your quote ${updated.quoteId} has been approved by admin.`
+          : `Your quote ${updated.quoteId} was rejected. Reason: ${reason || 'No reason provided'}`,
+      data: {
+        quotationId: updated._id.toString(),
+        jobRequestId: updated.jobRequest.toString(),
+        screen: 'QuoteDetails',
+      },
+    });
+
     return this.mapToResponse(updated);
   }
 
@@ -466,6 +485,19 @@ export class JobRequestQuotationService {
       metadata: { acceptedBy: homeOwnerId },
     });
 
+    await this.notificationService.create({
+      userId: updated.tradePerson.toString(),
+      userType: UserType.TRADESPERSON,
+      type: 'QUOTE_ACCEPTED',
+      title: 'Quote accepted',
+      message: `Homeowner has accepted your quote ${updated.quoteId}.`,
+      data: {
+        quotationId: updated._id.toString(),
+        jobRequestId: updated.jobRequest.toString(),
+        screen: 'QuoteDetails',
+      },
+    });
+
     return this.mapToResponse(updated);
   }
 
@@ -508,6 +540,19 @@ export class JobRequestQuotationService {
       notes: reason || 'Homeowner rejected the quotation',
       performedBy: new Types.ObjectId(homeOwnerId),
       metadata: { rejectedBy: homeOwnerId, reason },
+    });
+
+    await this.notificationService.create({
+      userId: updated.tradePerson.toString(),
+      userType: UserType.TRADESPERSON,
+      type: 'QUOTE_REJECTED',
+      title: 'Quote rejected',
+      message: `Homeowner has rejected your quote ${updated.quoteId}. Reason: ${reason || 'No reason provided'}`,
+      data: {
+        quotationId: updated._id.toString(),
+        jobRequestId: updated.jobRequest.toString(),
+        screen: 'QuoteDetails',
+      },
     });
 
     return this.mapToResponse(updated);
@@ -612,6 +657,19 @@ export class JobRequestQuotationService {
         payment.jobRequest.toString(),
         `Your verification code for this job is: ${verificationCode}. Present it to the homeowner when you arrive.`,
       );
+
+      await this.notificationService.create({
+        userId: quotation.tradePerson.toString(),
+        userType: UserType.TRADESPERSON,
+        type: 'QUOTE_PAID',
+        title: 'Payment received',
+        message: `The homeowner has paid for quote ${quotation.quoteId}. You can now start the job.`,
+        data: {
+          quotationId: quotation._id.toString(),
+          jobRequestId: payment.jobRequest.toString(),
+          screen: 'QuoteDetails',
+        },
+      });
 
       await this.eventRepo.create({
         quotation: quotation._id,
@@ -775,6 +833,20 @@ export class JobRequestQuotationService {
     });
 
     await this.paymentRepo.updateById(payment._id.toString(), { status: 'RELEASED' });
+
+    await this.notificationService.create({
+      userId: quotation.tradePerson.toString(),
+      userType: UserType.TRADESPERSON,
+      type: 'PAYMENT_RELEASED',
+      title: 'Payment released',
+      message: `${releaseType} payment of ${releaseAmount} has been released for quote ${quotation.quoteId}.`,
+      data: {
+        quotationId: quotation._id.toString(),
+        jobRequestId: payment.jobRequest.toString(),
+        releaseType,
+        screen: 'QuoteDetails',
+      },
+    });
 
     await this.eventRepo.create({
       quotation: quotation._id,

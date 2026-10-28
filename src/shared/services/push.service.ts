@@ -1,53 +1,32 @@
-import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
-
-const logger = new Logger('PushService');
+import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
+import { IPushProvider, PushNotification, PUSH_PROVIDER } from '../push/push-provider.interface';
+import { NoopPushProvider } from '../push/noop.provider';
 
 @Injectable()
 export class PushService {
-  private appId: string;
-  private apiKey: string;
-  private apiUrl = 'https://onesignal.com/api/v1/notifications';
+  private readonly logger = new Logger(PushService.name);
 
-  constructor() {
-    this.appId = process.env.ONESIGNAL_APP_ID || '';
-    this.apiKey = process.env.ONESIGNAL_API_KEY || '';
+  constructor(
+    @Optional()
+    @Inject(PUSH_PROVIDER)
+    private readonly provider: IPushProvider,
+  ) {
+    if (!this.provider) {
+      this.logger.warn('No push provider registered; push notifications will be no-ops');
+      this.provider = new NoopPushProvider();
+    }
   }
 
-  private hasConfig() {
-    return !!this.appId && !!this.apiKey;
+  async sendToDeviceIds(
+    deviceIds: string[],
+    heading: string,
+    message: string,
+    data?: Record<string, any>,
+  ) {
+    return this.provider.sendToDeviceIds(deviceIds, { heading, message, data });
   }
 
-  async sendToDeviceIds(deviceIds: string[], heading: string, message: string, data?: Record<string, any>) {
-    if (!this.hasConfig()) {
-      logger.warn('OneSignal not configured; skipping push send');
-      return;
-    }
-
-    if (!deviceIds || deviceIds.length === 0) return;
-
-    const payload: any = {
-      app_id: this.appId,
-      include_player_ids: deviceIds,
-      headings: { en: heading },
-      contents: { en: message },
-    };
-
-    if (data) payload.data = data;
-
-    try {
-      logger.log(`Sending OneSignal push to ${deviceIds.length} device(s): ${heading} - ${message}`);
-      const resp = await axios.post(this.apiUrl, payload, {
-        headers: {
-          Authorization: `Basic ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      logger.log(`OneSignal send success: ${resp.status} (${resp.data?.id ?? 'no-id'})`);
-      logger.debug(`OneSignal response ${resp.status}`);
-      return resp.data;
-    } catch (err) {
-      logger.error('Failed to send push via OneSignal', err?.response?.data || err.message || err);
-    }
+  async sendToDeviceIdsRaw(deviceIds: string[], notification: PushNotification) {
+    return this.provider.sendToDeviceIds(deviceIds, notification);
   }
 }

@@ -48,4 +48,26 @@ export class TradePersonKycRepository {
       .populate('user')
       .lean();
   }
+
+  async find(query: any): Promise<TradePersonKycProfile[]> {
+    return this.model.find(query).lean();
+  }
+
+  async findNearLocationWithUser(
+    coordinates: [number, number],
+    maxDistanceMeters: number,
+  ): Promise<TradePersonKycProfile[]> {
+    return this.model
+      .find({
+        status: 'APPROVED',
+        location: {
+          $nearSphere: {
+            $geometry: { type: 'Point', coordinates },
+            $maxDistance: maxDistanceMeters,
+          },
+        },
+      })
+      .populate('user')
+      .lean();
+  }
 }

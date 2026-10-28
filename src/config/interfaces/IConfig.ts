@@ -15,6 +15,7 @@ export interface ConfigProps {
   port: number;
   api: ApiConfigProps;
   payment: PaymentConfigProps;
+  serviceRadiusKm: number;
   appEnv: string;
   frontEndLink: string;
 }

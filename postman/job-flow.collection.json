@@ -1,0 +1,1249 @@
+{
+  "info": {
+    "_postman_id": "tegrid-job-flow-location-messaging-001",
+    "name": "TradeExpertGrid - Job Flow, Location Restriction & Messaging",
+    "description": "End-to-end collection for the TradeExpertGrid job flow, including the geo/location restriction on job discovery and the messaging/inbox + notifications endpoints.\n\nConventions:\n- No global prefix: every path already includes the literal `/v1` segment.\n- Success responses are wrapped as `{ \"message\": string, \"data\": <payload> }`.\n- Paginated payloads are `{ page, size, pageTotal, hasNext, hasPrevious, data: [...] }` nested inside `data`.\n- Login returns the JWT at `data.token` (this collection captures it into `{{homeOwnerToken}}`, `{{tradePersonToken}}` and `{{adminToken}}`).\n- Global ValidationPipe uses `whitelist: true` and `forbidNonWhitelisted: true`: unknown body fields return 400.\n- AuthGuard returns 403 (not 401) when the bearer token is missing/invalid.\n- Run requests top-to-bottom; id variables are captured automatically by test scripts.\n\nLocation restriction (see the \"3. Location Restriction\" folder):\nA trade person calling GET /v1/jobs only sees jobs within SERVICE_RADIUS_KM kilometres (default 10) of the location stored on their KYC profile, plus visibility rules (PUBLIC, or PRIVATE assigned to them). The radius is NOT a request parameter - it is an env var. To exercise it, first run \"Trade Person: Complete Address Verification\" with a `location` (GeoJSON Point).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Auth",
+      "description": "Obtain bearer tokens for each actor. Tokens and user ids are stored in collection variables for the rest of the run.",
+      "item": [
+        {
+          "name": "Home Owner Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"homeowner@example.com\",\n  \"password\": \"Password@123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "auth", "login"]
+            },
+            "description": "Home owner login. Captures `data.token` -> {{homeOwnerToken}} and `data._id` -> {{homeOwnerId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.token) {",
+                  "    pm.collectionVariables.set('homeOwnerToken', jsonData.data.token);",
+                  "}",
+                  "if (jsonData.data && jsonData.data._id) {",
+                  "    pm.collectionVariables.set('homeOwnerId', jsonData.data._id);",
+                  "}",
+                  "pm.test('Login succeeded', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Trade Person Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tradeperson@example.com\",\n  \"password\": \"Password@123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/tradeperson/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "tradeperson", "auth", "login"]
+            },
+            "description": "Trade person login. Captures `data.token` -> {{tradePersonToken}} and `data._id` -> {{tradePersonId}} (also used as a messaging recipient)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.token) {",
+                  "    pm.collectionVariables.set('tradePersonToken', jsonData.data.token);",
+                  "}",
+                  "if (jsonData.data && jsonData.data._id) {",
+                  "    pm.collectionVariables.set('tradePersonId', jsonData.data._id);",
+                  "}",
+                  "pm.test('Login succeeded', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@tradeexpertgrid.com\",\n  \"password\": \"Password@123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "auth", "login"]
+            },
+            "description": "Admin login (requires role ADMIN/ROOT for the flows below). Captures `data.token` -> {{adminToken}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.token) {",
+                  "    pm.collectionVariables.set('adminToken', jsonData.data.token);",
+                  "}",
+                  "pm.test('Login succeeded', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. Location Setup (KYC Prerequisites)",
+      "description": "The location restriction for jobs is driven by the trade person's KYC profile location. Run \"Complete Address Verification\" with a `location` GeoJSON Point to become discoverable / to filter nearby jobs. Bank details and admin KYC approval are also required before payment release.",
+      "item": [
+        {
+          "name": "Trade Person: KYC Status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/trade-person-kyc/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "trade-person-kyc", "status"]
+            },
+            "description": "Check which KYC steps are complete (profile, identity, health & safety, police report, bank details, main trade)."
+          },
+          "response": []
+        },
+        {
+          "name": "Trade Person: Complete Address Verification (sets service location)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"5 Adeola Odeku Street, Victoria Island, Lagos\",\n  \"addressProofUrl\": \"https://example.com/address-proof.pdf\",\n  \"location\": {\n    \"type\": \"Point\",\n    \"coordinates\": [3.3792, 6.5244]\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/trade-person-kyc/complete-address-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "trade-person-kyc", "complete-address-verification"]
+            },
+            "description": "Sets the trade person's service location on the KYC profile. `location.coordinates` must be GeoJSON `[longitude, latitude]` (exactly 2 numbers). This is what GET /v1/jobs uses to restrict results to SERVICE_RADIUS_KM (default 10 km). Use coordinates near the job's `locationCoordinates` so the job is returned."
+          },
+          "response": []
+        },
+        {
+          "name": "Trade Person: Complete Bank Details",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountNumber\": \"0123456789\",\n  \"bankCode\": \"058\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/trade-person-kyc/complete-bank-details",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "trade-person-kyc", "complete-bank-details"]
+            },
+            "description": "Required before an admin can release payment to the trade person (a Paystack transfer recipient is created from this account)."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin: Approve Trade Person KYC",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/kyc/trade-person/{{tradePersonId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "admin", "kyc", "trade-person", "{{tradePersonId}}", "approve"]
+            },
+            "description": "Approves the trade person KYC (required for payment release). `{{tradePersonId}}` is captured by the Trade Person Login request."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Job Flow",
+      "description": "Job request -> quotation -> admin review -> home owner accept -> payment -> verification -> completion -> payment release -> review. Status model: JobRequest.status = OPEN | QUOTATION_PAID | COMPLETED. Quotation.reviewStatus = PENDING | ADMIN_APPROVED | ADMIN_REJECTED | HOMEOWNER_ACCEPTED | HOMEOWNER_REJECTED | PAYMENT_COMPLETED.",
+      "item": [
+        {
+          "name": "2.1 Job Request",
+          "item": [
+            {
+              "name": "List Job Types",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/job-types?page=1&pageSize=50",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "job-types"],
+                  "query": [
+                    { "key": "page", "value": "1" },
+                    { "key": "pageSize", "value": "50" }
+                  ]
+                },
+                "description": "Public. Captures the first job type id into {{jobTypeId}} for job creation."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.data && jsonData.data.data && jsonData.data.data.length > 0) {",
+                      "    pm.collectionVariables.set('jobTypeId', jsonData.data.data[0]._id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Home Owner: Create Job (PUBLIC, with location)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json", "type": "text" },
+                  { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Fix leaking kitchen sink\",\n  \"description\": \"The kitchen sink is leaking from under the cabinet\",\n  \"budget\": 500000,\n  \"currency\": \"NGN\",\n  \"preferredDate\": \"2026-08-10\",\n  \"preferredTime\": \"14:00\",\n  \"homeAddress\": \"12 Baker Street, Lagos\",\n  \"locationCoordinates\": [3.3792, 6.5244],\n  \"photos\": [\"https://example.com/photo1.jpg\"],\n  \"jobTypeId\": \"{{jobTypeId}}\",\n  \"visibility\": \"PUBLIC\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs"]
+                },
+                "description": "Creates a job request. Requires AuthGuard + KycGuard (home owner KYC complete). `locationCoordinates` is `[longitude, latitude]`; when present and PUBLIC, tradespersons within SERVICE_RADIUS_KM whose main trade matches the job type are notified. Captures the new job id -> {{jobRequestId}}.\n\nNote: `budget` is in minor units (kobo). `visibility` is PUBLIC or PRIVATE; PRIVATE requires `tradespersonId`."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.data && jsonData.data._id) {",
+                      "    pm.collectionVariables.set('jobRequestId', jsonData.data._id);",
+                      "}",
+                      "pm.test('Job created', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Home Owner: Create Job (PRIVATE, direct to tradesperson)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json", "type": "text" },
+                  { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Emergency pipe repair\",\n  \"description\": \"Burst pipe under the kitchen sink\",\n  \"budget\": 250000,\n  \"currency\": \"NGN\",\n  \"homeAddress\": \"12 Baker Street, Lagos\",\n  \"locationCoordinates\": [3.3792, 6.5244],\n  \"jobTypeId\": \"{{jobTypeId}}\",\n  \"visibility\": \"PRIVATE\",\n  \"tradespersonId\": \"{{tradePersonId}}\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs"]
+                },
+                "description": "PRIVATE variant: only the assigned `tradespersonId` is notified and can see the job (geo restriction does not apply). Captures the new job id -> {{jobRequestId}}."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.data && jsonData.data._id) {",
+                      "    pm.collectionVariables.set('jobRequestId', jsonData.data._id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Home Owner: List My Jobs",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs?page=1&pageSize=10",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs"],
+                  "query": [
+                    { "key": "page", "value": "1" },
+                    { "key": "pageSize", "value": "10" }
+                  ]
+                },
+                "description": "For a home owner, returns their own job requests (no geo restriction). Optional `q` filters by title. Captures the first job id if {{jobRequestId}} is empty."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (!pm.collectionVariables.get('jobRequestId') && jsonData.data && jsonData.data.data && jsonData.data.data.length > 0) {",
+                      "    pm.collectionVariables.set('jobRequestId', jsonData.data.data[0]._id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Admin: List All Jobs",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/admin?page=1&pageSize=20",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "admin"],
+                  "query": [
+                    { "key": "page", "value": "1" },
+                    { "key": "pageSize", "value": "20" }
+                  ]
+                },
+                "description": "Admin only. Paginated list of ALL job requests with NO geospatial filtering."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "2.2 Trade Person Quotations",
+          "item": [
+            {
+              "name": "Trade Person: Submit Quotation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json", "type": "text" },
+                  { "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"materials\": [\n    { \"description\": \"PVC pipes\", \"materialCode\": \"PVC-001\", \"quantity\": 10, \"unitPrice\": 5000, \"vat\": 750 }\n  ],\n  \"tools\": [\n    { \"description\": \"Pipe wrench\", \"materialCode\": \"WR-001\", \"quantity\": 2, \"unitPrice\": 15000, \"vat\": 750 }\n  ],\n  \"workmanships\": [\n    { \"description\": \"Labour for pipe installation\", \"price\": 50000 }\n  ]\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "quotation"]
+                },
+                "description": "Trade person only (@RequireUserType(TRADESPERSON)). One quotation per (job, trade person). `totalAmount` = sum(quantity * unitPrice + vat) over materials/tools + sum(workmanship.price). All prices are in minor units (kobo). Captures the quotation id -> {{quotationId}}."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.data && jsonData.data._id) {",
+                      "    pm.collectionVariables.set('quotationId', jsonData.data._id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Trade Person: Get My Quotation",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "quotation"]
+                },
+                "description": "Returns this trade person's quotation for the job (if any)."
+              },
+              "response": []
+            },
+            {
+              "name": "Trade Person: Update Pending Quotation",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json", "type": "text" },
+                  { "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"workmanships\": [\n    { \"description\": \"Labour for pipe installation\", \"price\": 45000 }\n  ]\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "quotation"]
+                },
+                "description": "Only allowed while the quotation is PENDING. All three arrays are optional in updates."
+              },
+              "response": []
+            },
+            {
+              "name": "Trade Person: Revise Quotation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json", "type": "text" },
+                  { "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"materials\": [\n    { \"description\": \"PVC pipes\", \"materialCode\": \"PVC-001\", \"quantity\": 8, \"unitPrice\": 5000, \"vat\": 750 }\n  ],\n  \"tools\": [\n    { \"description\": \"Pipe wrench\", \"materialCode\": \"WR-001\", \"quantity\": 1, \"unitPrice\": 15000, \"vat\": 750 }\n  ],\n  \"workmanships\": [\n    { \"description\": \"Labour for pipe installation\", \"price\": 40000 }\n  ],\n  \"changeReason\": \"Reduced quantity after site inspection\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation/{{quotationId}}/revise",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "quotation", "{{quotationId}}", "revise"]
+                },
+                "description": "Allowed only when the quotation was rejected by the home owner or admin (HOMEOWNER_REJECTED / ADMIN_REJECTED). Snapshots the previous version into revision history."
+              },
+              "response": []
+            },
+            {
+              "name": "Trade Person: Quotation Revisions",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation/{{quotationId}}/revisions",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "quotation", "{{quotationId}}", "revisions"]
+                },
+                "description": "Revision history for the quotation."
+              },
+              "response": []
+            },
+            {
+              "name": "Trade Person: Delete Pending Quotation",
+              "request": {
+                "method": "DELETE",
+                "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "quotation"]
+                },
+                "description": "Deletes the trade person's pending quotation."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "2.3 Admin Review",
+          "item": [
+            {
+              "name": "Admin: List Quotations for Job",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/quotations/{{jobRequestId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "admin", "quotations", "{{jobRequestId}}"]
+                },
+                "description": "Admin only. Lists all quotations for the job. Captures the first quotation id -> {{quotationId}} if not already set."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (!pm.collectionVariables.get('quotationId') && jsonData.data && jsonData.data.length > 0) {",
+                      "    pm.collectionVariables.set('quotationId', jsonData.data[0]._id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Admin: Move Quotation to Review",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/review",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "admin", "quotations", "{{quotationId}}", "review"]
+                },
+                "description": "Records an ADMIN_REVIEW event. No body."
+              },
+              "response": []
+            },
+            {
+              "name": "Admin: Approve Quotation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json", "type": "text" },
+                  { "key": "Authorization", "value": "Bearer {{adminToken}}", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"ADMIN_APPROVED\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/review-decision",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "admin", "quotations", "{{quotationId}}", "review-decision"]
+                },
+                "description": "Moves the quotation to ADMIN_APPROVED. Only one quotation per job may be admin-approved (concurrency-guarded). After approval the home owner can see it and accept."
+              },
+              "response": []
+            },
+            {
+              "name": "Admin: Reject Quotation (example)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json", "type": "text" },
+                  { "key": "Authorization", "value": "Bearer {{adminToken}}", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"ADMIN_REJECTED\",\n  \"reason\": \"Price is too high\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/review-decision",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "admin", "quotations", "{{quotationId}}", "review-decision"]
+                },
+                "description": "Rejects the quotation. `reason` is required by the service when rejecting. Use this OR the approve request, not both, for a given quotation."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "2.4 Home Owner Accept & Pay",
+          "item": [
+            {
+              "name": "Home Owner: List Approved Quotations",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotations",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "quotations"]
+                },
+                "description": "Home owner only. Returns admin-approved quotations for a job they created. Captures the first quotation id -> {{quotationId}} if not set."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (!pm.collectionVariables.get('quotationId') && jsonData.data && jsonData.data.length > 0) {",
+                      "    pm.collectionVariables.set('quotationId', jsonData.data[0]._id);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Home Owner: Get Accepted Quotation",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/accepted-quotation",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "accepted-quotation"]
+                },
+                "description": "Returns the accepted quotation for the job (after acceptance)."
+              },
+              "response": []
+            },
+            {
+              "name": "Home Owner: Accept Quotation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json", "type": "text" },
+                  { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"notes\": \"Accepted for immediate work\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotations/{{quotationId}}/accept",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "quotations", "{{quotationId}}", "accept"]
+                },
+                "description": "Home owner accepts an ADMIN_APPROVED quotation (only one accepted per job)."
+              },
+              "response": []
+            },
+            {
+              "name": "Home Owner: Reject Quotation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json", "type": "text" },
+                  { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Price is too high\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotations/{{quotationId}}/reject",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "quotations", "{{quotationId}}", "reject"]
+                },
+                "description": "Rejects an admin-approved quotation; the trade person may then revise it."
+              },
+              "response": []
+            },
+            {
+              "name": "Home Owner: Pay Accepted Quotation",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotations/{{quotationId}}/pay",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "quotations", "{{quotationId}}", "pay"]
+                },
+                "description": "Initializes a Paystack transaction for the full accepted amount and returns `authorizationUrl`, `accessCode` and `reference`. Captures `data.reference` -> {{jobPaymentReference}}."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.data && jsonData.data.reference) {",
+                      "    pm.collectionVariables.set('jobPaymentReference', jsonData.data.reference);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "2.5 Payment Callbacks",
+          "item": [
+            {
+              "name": "Paystack Callback (verify by reference)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/payments/paystack/callback?reference={{jobPaymentReference}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "payments", "paystack", "callback"],
+                  "query": [{ "key": "reference", "value": "{{jobPaymentReference}}" }]
+                },
+                "description": "PUBLIC (no auth). Verifies the payment with Paystack. On success: Payment=SUCCESS, quotation=PAYMENT_COMPLETED, job=QUOTATION_PAID, and a 4-digit verification code is generated and sent to the trade person via messaging."
+              },
+              "response": []
+            },
+            {
+              "name": "Paystack Webhook",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"event\": \"charge.success\",\n  \"data\": {\n    \"status\": \"success\",\n    \"reference\": \"{{jobPaymentReference}}\",\n    \"amount\": 1050000,\n    \"currency\": \"NGN\",\n    \"customer\": { \"email\": \"homeowner@example.com\" }\n  }\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/payments/paystack/webhook",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "payments", "paystack", "webhook"]
+                },
+                "description": "PUBLIC (no auth). Only reacts to `charge.success`, then performs the same verification as the callback. Note: this route uses an inline body type, so DTO validation does not apply."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "2.6 Completion & Payment Release",
+          "item": [
+            {
+              "name": "Trade Person: Request Completion",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/quotation/request-completion",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "quotation", "request-completion"]
+                },
+                "description": "Trade person (assigned, paid job) asks the home owner to mark the job complete. Sends a message to the home owner."
+              },
+              "response": []
+            },
+            {
+              "name": "Home Owner: Get Verification Code",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/verification-code",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "verification-code"]
+                },
+                "description": "Home owner views the 4-digit code generated at payment. Captures `data.code` -> {{verificationCode}}."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var jsonData = pm.response.json();",
+                      "if (jsonData.data && jsonData.data.code) {",
+                      "    pm.collectionVariables.set('verificationCode', jsonData.data.code);",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "response": []
+            },
+            {
+              "name": "Home Owner: Verify Code",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json", "type": "text" },
+                  { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"{{verificationCode}}\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/verify-code",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "verify-code"]
+                },
+                "description": "Home owner verifies the code presented by the trade person. `code` must be exactly 4 characters."
+              },
+              "response": []
+            },
+            {
+              "name": "Home Owner: Complete Job",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/complete",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "complete"]
+                },
+                "description": "Marks the job COMPLETED and starts the 14-day satisfactory period (satisfactoryPeriodEndsAt = now + 14 days)."
+              },
+              "response": []
+            },
+            {
+              "name": "Admin: Approve QA",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/quotations/jobs/{{jobRequestId}}/approve-qa",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "admin", "quotations", "jobs", "{{jobRequestId}}", "approve-qa"]
+                },
+                "description": "Admin only. Records QA approval, which allows the balance payment to be released before the 14-day period elapses."
+              },
+              "response": []
+            },
+            {
+              "name": "Admin: Release Initial Payment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json", "type": "text" },
+                  { "key": "Authorization", "value": "Bearer {{adminToken}}", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"releaseType\": \"INITIAL\",\n  \"reason\": \"Initial milestone completed\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/release-payment",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "admin", "quotations", "{{quotationId}}", "release-payment"]
+                },
+                "description": "Admin only. Requires the job to be COMPLETED, plus an APPROVED trade person KYC and bank account. Releases `amount * upfrontReleasePercentage%` (default 50%; config `upfrontReleasePercentage`)."
+              },
+              "response": []
+            },
+            {
+              "name": "Admin: Release Balance Payment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json", "type": "text" },
+                  { "key": "Authorization", "value": "Bearer {{adminToken}}", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"releaseType\": \"BALANCE\",\n  \"reason\": \"Satisfactory period elapsed\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/release-payment",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "admin", "quotations", "{{quotationId}}", "release-payment"]
+                },
+                "description": "Admin only. Requires the INITIAL release to be done AND (QA approved OR the 14-day satisfactory period elapsed). Releases the remaining balance. A daily cron also auto-releases balances at midnight."
+              },
+              "response": []
+            },
+            {
+              "name": "Admin: Quotation Events",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/events",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "admin", "quotations", "{{quotationId}}", "events"]
+                },
+                "description": "Admin only. Returns the quotation event log (QUOTE_SUBMITTED, ADMIN_REVIEW, QUOTE_APPROVED, QUOTE_REJECTED, RESIDENT_PAID, PAYMENT_RELEASED, JOB_COMPLETED, QA_APPROVED)."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "2.7 Reviews & Contracts",
+          "item": [
+            {
+              "name": "Home Owner: Review Trade Person",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json", "type": "text" },
+                  { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Great work, very professional!\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/review",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "jobs", "{{jobRequestId}}", "review"]
+                },
+                "description": "Home owner reviews the trade person after the job is COMPLETED. One review per job/home owner. `rating` is an integer 1-5."
+              },
+              "response": []
+            },
+            {
+              "name": "Public: Get Trade Person Reviews",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tradeperson/{{tradePersonId}}/reviews",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "tradeperson", "{{tradePersonId}}", "reviews"]
+                },
+                "description": "PUBLIC (no auth). Returns `{ reviews, averageRating, total }` for the trade person."
+              },
+              "response": []
+            },
+            {
+              "name": "Trade Person: My Contracts",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/tradeperson/contracts?status=ACTIVE",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["v1", "tradeperson", "contracts"],
+                  "query": [{ "key": "status", "value": "ACTIVE" }]
+                },
+                "description": "Trade person only. Lists contracts derived from assigned jobs + quotations. Optional `status` filter: PENDING | ACTIVE | COMPLETED."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Location Restriction",
+      "description": "How job discovery is restricted by location.\n\nRule: a trade person calling GET /v1/jobs sees only jobs whose `location` is within SERVICE_RADIUS_KM kilometres (env var, default 10) of the location on their KYC profile, AND that are visible to them (PUBLIC, or PRIVATE assigned to them). Jobs without coordinates, or a trade person without a KYC location, fall back to visibility-only filtering (no distance restriction). The radius is NOT a query parameter.\n\nPrerequisite: run \"Trade Person: Complete Address Verification\" with a `location` so the trade person has coordinates.\n\nRelated (non-geo) endpoints: admin job list (no geo filter) and the public trade person directory (no proximity filter)."
+    , "item": [
+      {
+        "name": "Trade Person: List Nearby Jobs (geo-restricted)",
+        "request": {
+          "method": "GET",
+          "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }],
+          "url": {
+            "raw": "{{baseUrl}}/v1/jobs?page=1&pageSize=10",
+            "host": ["{{baseUrl}}"],
+            "path": ["v1", "jobs"],
+            "query": [
+              { "key": "q", "value": "", "description": "Optional title filter (case-insensitive regex)", "disabled": true },
+              { "key": "page", "value": "1" },
+              { "key": "pageSize", "value": "10" }
+            ]
+          },
+          "description": "Trade person view. Results are restricted to within SERVICE_RADIUS_KM (default 10 km) of the trade person's KYC location and to PUBLIC / PRIVATE-assigned jobs. If the trade person has no KYC location, only visibility filtering applies. Captures the first job id -> {{jobRequestId}} if not set."
+        },
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "var jsonData = pm.response.json();",
+                "if (!pm.collectionVariables.get('jobRequestId') && jsonData.data && jsonData.data.data && jsonData.data.data.length > 0) {",
+                "    pm.collectionVariables.set('jobRequestId', jsonData.data.data[0]._id);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }
+        ],
+        "response": []
+      },
+      {
+        "name": "Public: List Trade Persons (directory)",
+        "request": {
+          "method": "GET",
+          "header": [],
+          "url": {
+            "raw": "{{baseUrl}}/v1/trade-persons",
+            "host": ["{{baseUrl}}"],
+            "path": ["v1", "trade-persons"]
+          },
+          "description": "PUBLIC. Approved trade persons with complete KYC. No proximity/geo filter is applied on this endpoint (no query params)."
+        },
+        "response": []
+      }
+    ]
+    },
+    {
+      "name": "4. Messaging & Inbox",
+      "description": "HTTP messaging/chat endpoints. All require a bearer token; the JWT `userType` becomes the message `senderType`.\n\nRealtime: a socket.io gateway is mounted at namespace `/messages` (same host/port). Handshake auth via `auth.token` or `query.token`. Client events: `send_message` {recipientId,recipientType,content}, `send_job_message` {recipientId,recipientType,jobRequestId,content}, `mark_read` {messageId}, `join` {userType,userId}. Server events: `message_sent`, `message_read`, `new_message`, `new_notification`, `joined`, `error`. Sockets are not exercised by Postman HTTP requests.",
+      "item": [
+        {
+          "name": "Send General Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientId\": \"{{tradePersonId}}\",\n  \"recipientType\": \"TRADES_PERSON\",\n  \"content\": \"Hello, are you available tomorrow?\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "messages"]
+            },
+            "description": "Sends a GENERAL message. `recipientId` must be a Mongo id; `recipientType` is the recipient's userType (HOME_OWNER or TRADES_PERSON). Emits `message.created` -> gateway `new_message` to the recipient room."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Job Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientId\": \"{{homeOwnerId}}\",\n  \"recipientType\": \"HOME_OWNER\",\n  \"content\": \"I have sent the verification code.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "messages"]
+            },
+            "description": "Sends a JOB-scoped message (type=JOB, jobRequest set)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job Messages",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/jobs/{{jobRequestId}}/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "jobs", "{{jobRequestId}}", "messages"]
+            },
+            "description": "Returns all messages for the job as an array (ordered oldest first, not paginated)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Inbox",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/messages/inbox?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "messages", "inbox"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            },
+            "description": "Paginated inbox for the current user (newest first). Captures the first message id -> {{messageId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.data && jsonData.data.data.length > 0) {",
+                  "    pm.collectionVariables.set('messageId', jsonData.data.data[0]._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get Conversation",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{homeOwnerToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/messages/conversation/{{otherUserId}}?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "messages", "conversation", "{{otherUserId}}"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            },
+            "description": "Paginated conversation between the current user and `{{otherUserId}}` (ordered oldest first). Set {{otherUserId}} to the counterpart id (e.g. the trade person id when logged in as a home owner)."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Message Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isRead\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/messages/{{messageId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "messages", "{{messageId}}", "read"]
+            },
+            "description": "Marks a message as read. Only the recipient may do this (otherwise 404). The `isRead` body field is accepted but ignored by the service; the body is otherwise optional."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Notifications",
+      "description": "Notification/inbox-adjacent endpoints. All require a bearer token and are scoped to the current user + userType.",
+      "item": [
+        {
+          "name": "Register Device Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" },
+              { "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"abc123-player-id\",\n  \"platform\": \"ios\",\n  \"provider\": \"onesignal\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/notifications/device-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "notifications", "device-token"]
+            },
+            "description": "Registers/upserts a push device token. `provider` defaults to `onesignal`."
+          },
+          "response": []
+        },
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/notifications?page=1&limit=20&unreadOnly=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "notifications"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "unreadOnly", "value": "false" }
+              ]
+            },
+            "description": "Paginated notifications for the current user (newest first), plus `unreadCount`. Captures the first notification id -> {{notificationId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.data && jsonData.data.data.length > 0) {",
+                  "    pm.collectionVariables.set('notificationId', jsonData.data.data[0]._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Mark All Notifications Read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/notifications/read-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "notifications", "read-all"]
+            },
+            "description": "Marks all notifications for the current user as read."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tradePersonToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/v1/notifications/{{notificationId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "notifications", "{{notificationId}}", "read"]
+            },
+            "description": "Marks a single notification as read (scoped to the current user + userType). Returns the updated notification or null."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8083", "type": "string" },
+    { "key": "homeOwnerToken", "value": "", "type": "string" },
+    { "key": "homeOwnerId", "value": "", "type": "string" },
+    { "key": "tradePersonToken", "value": "", "type": "string" },
+    { "key": "tradePersonId", "value": "", "type": "string" },
+    { "key": "adminToken", "value": "", "type": "string" },
+    { "key": "jobTypeId", "value": "", "type": "string" },
+    { "key": "jobRequestId", "value": "", "type": "string" },
+    { "key": "quotationId", "value": "", "type": "string" },
+    { "key": "jobPaymentReference", "value": "", "type": "string" },
+    { "key": "verificationCode", "value": "", "type": "string" },
+    { "key": "messageId", "value": "", "type": "string" },
+    { "key": "otherUserId", "value": "", "type": "string" },
+    { "key": "notificationId", "value": "", "type": "string" }
+  ]
+}

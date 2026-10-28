@@ -41,6 +41,18 @@ export class HomeOwnerKycProfile {
     @Prop()
     addressProofUrl?: string;
 
+    @Prop({
+        type: {
+            type: String,
+            enum: ['Point'],
+        },
+        coordinates: [Number],
+    })
+    location?: {
+        type: 'Point';
+        coordinates: [number, number];
+    };
+
     // workflow fields
     @Prop({ type: String, default: 'PENDING' })
     status?: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -58,4 +70,5 @@ export class HomeOwnerKycProfile {
 export const HomeOwnerKycProfileSchema = SchemaFactory.createForClass(HomeOwnerKycProfile);
 
 HomeOwnerKycProfileSchema.set('timestamps', true);
+HomeOwnerKycProfileSchema.index({ location: '2dsphere' });
 

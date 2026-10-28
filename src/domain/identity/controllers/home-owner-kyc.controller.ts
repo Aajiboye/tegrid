@@ -92,8 +92,8 @@ export class HomeOwnerKycController {
     @ApiOperation({ summary: 'Complete Home Owner Address Verification' })
     @ApiResponse({ description: 'Address verified', type: HomeOwnerProfileDto })
     async completeAddressVerification(@user() user: HomeOwner, @Body() payload: HomeOwnerAddressVerificationDto) {
-        const { homeAddress, addressProofUrl } = payload;
-        const res = await this.homeOwnerKycService.completeAddressVerification(user, homeAddress, addressProofUrl);
+        const { homeAddress, addressProofUrl, location } = payload;
+        const res = await this.homeOwnerKycService.completeAddressVerification(user, homeAddress, addressProofUrl, location);
         return adaptResponse(res, "Address verification completed successfully");
     }
 

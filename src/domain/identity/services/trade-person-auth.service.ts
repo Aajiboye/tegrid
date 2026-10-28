@@ -157,7 +157,6 @@ export class TradePersonAuthService extends BaseAuthService implements IAuth {
 
     user = await this.tradePersonUserRepo.save(user);
 
-
     return {
       userName: user.userName,
       email: user.email,

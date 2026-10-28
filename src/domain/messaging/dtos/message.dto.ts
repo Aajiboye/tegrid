@@ -42,6 +42,23 @@ export class MarkMessageReadDto {
   isRead?: boolean;
 }
 
+export class MessageSenderProfileDto {
+  @ApiProperty()
+  _id: string;
+
+  @ApiPropertyOptional()
+  userName?: string;
+
+  @ApiPropertyOptional()
+  email?: string;
+
+  @ApiPropertyOptional()
+  profileAvatar?: string;
+
+  @ApiProperty()
+  userType: string;
+}
+
 export class MessageResponseDto {
   @ApiProperty()
   _id: string;
@@ -58,11 +75,17 @@ export class MessageResponseDto {
   @ApiProperty()
   senderType: string;
 
+  @ApiPropertyOptional({ type: MessageSenderProfileDto })
+  senderProfile?: MessageSenderProfileDto;
+
   @ApiProperty()
   recipient: string;
 
   @ApiProperty()
   recipientType: string;
+
+  @ApiPropertyOptional({ type: MessageSenderProfileDto })
+  recipientProfile?: MessageSenderProfileDto;
 
   @ApiProperty()
   content: string;

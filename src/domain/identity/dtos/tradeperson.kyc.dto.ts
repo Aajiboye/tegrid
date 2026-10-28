@@ -22,6 +22,12 @@ export class TradePersonProfileDto {
   homeAddress?: string;
 
   @ApiPropertyOptional()
+  location?: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+
+  @ApiPropertyOptional()
   healthAndSafetyCertificateUrl?: string;
 
   @ApiPropertyOptional()
@@ -105,6 +111,17 @@ export class TradePersonAddressVerificationDto {
   @IsString()
   @ApiProperty()
   addressProofUrl: string;
+
+  @IsOptional()
+  @ApiPropertyOptional({
+    type: () => Object,
+    example: { type: 'Point', coordinates: [3.3792, 6.5244] },
+    description: 'GeoJSON Point with [longitude, latitude]',
+  })
+  location?: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
 }
 
 export class TradePersonKycRejectionDto {

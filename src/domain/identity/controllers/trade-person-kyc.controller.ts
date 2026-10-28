@@ -21,6 +21,7 @@ import {
     HealthAndSafetyComplianceDto,
     PoliceCharacterReportDto,
     BankDetailsDto,
+    TradePersonAddressVerificationDto,
 } from '../dtos/tradeperson.kyc.dto';
 import { TradePerson } from '../models/trade-person-user.model';
 
@@ -83,6 +84,16 @@ export class TradePersonKycController {
         const { identityType, identityData, photoIdUrl, addressProofUrl } = payload;
         const res = await this.tradePersonKycService.completeIdentityVerification(user, { identityType, identityData, photoIdUrl, addressProofUrl });
         return adaptResponse(res, "Identity verification completed successfully");
+    }
+
+    @Post('/complete-address-verification')
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Complete TradePerson Address Verification' })
+    @ApiResponse({ description: 'Address verified', type: TradePersonProfileDto })
+    async completeAddressVerification(@user() user: TradePerson, @Body() payload: TradePersonAddressVerificationDto) {
+        const { address, addressProofUrl, location } = payload;
+        const res = await this.tradePersonKycService.completeAddressVerification(user, address, addressProofUrl, location);
+        return adaptResponse(res, "Address verification completed successfully");
     }
 
     @Get()

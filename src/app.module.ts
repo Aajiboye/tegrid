@@ -14,6 +14,7 @@ import { CryptoService } from './shared/services/crypto.service';
 import { WalletModule } from './domain/wallet/wallet.module';
 import { MessagingModule } from './domain/messaging/messaging.module';
 import { NotificationsModule } from './domain/notifications/notifications.module';
+import { PushModule } from './shared/push/push.module';
 import { CompetencyAssessmentModule } from './domain/competency-assessment/competency-assessment.module';
 import { StoreModule } from './domain/store/store.module';
 
@@ -26,6 +27,7 @@ const configService = new ConfigService();
       isGlobal: true,
       load: [config],
     }),
+    PushModule,
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     MongooseModule.forRoot(

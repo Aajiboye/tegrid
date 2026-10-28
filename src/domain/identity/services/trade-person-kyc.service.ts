@@ -90,9 +90,9 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
     private async ensureKycCompleted(profileId: string) {
         const profile = await this.tradePersonKycRepo.findById(profileId);
         if (!profile) throw new BadRequestException('KYC profile not found');
-        const profileItemsList = ["businessName", "contactName", "phoneNumber", "pinHash"];
+        const profileItemsList = ["firstName", "lastName", "phoneNumber", "pinHash"];
         const identityItemsList = ["identityType", "identityData", "photoIdUrl"];
-        const addressVerificationItemsList = ["address", "addressProofUrl"];
+        const addressVerificationItemsList = ["addressProofUrl"];
 
         const profileCompleted = profileItemsList.every(item => !!(profile as any)[item]);
         const identityCompleted = identityItemsList.every(item => !!(profile as any)[item]);
@@ -171,6 +171,7 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
                 coordinates: location.coordinates,
             };
         }
+
         const saved = await this.tradePersonKycRepo.updateWithUpsert({ user: new mongoose.Types.ObjectId(user._id) }, profile);
         return this.mapProfileToDto(saved);
     }
@@ -222,7 +223,7 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
     async completeBankDetails(user: TradePerson, bankDetailsDto: BankDetailsDto): Promise<any> {
         const profile: TradePersonKycProfile = {};
         // do bank account verification here
-        const accountDetails = await this.walletService.resolveAccountName(bankDetailsDto.accountNumber, bankDetailsDto.bankCode, false);
+        const accountDetails = await this.walletService.resolveAccountName(bankDetailsDto.accountNumber, bankDetailsDto.bankCode, this.configService.get<string>('APP_ENV') === 'development');
         const existingProfile = await this.tradePersonKycRepo.findOne({ user: new mongoose.Types.ObjectId(user._id) });
         if (existingProfile && existingProfile.bankAccounts && existingProfile.bankAccounts.length > 0) {
             // ensure no duplicate bank accounts are added

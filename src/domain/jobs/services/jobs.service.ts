@@ -197,15 +197,13 @@ export class JobsService {
       if (kycLocation?.coordinates?.length === 2) {
         const radiusKm = this.configService.get<number>('serviceRadiusKm') || 10;
         const maxDistanceMeters = radiusKm * 1000;
+        const earthRadiusMeters = 6378100;
+        const radiusInRadians = maxDistanceMeters / earthRadiusMeters;
         query['$and'] = [
           {
             location: {
-              $nearSphere: {
-                $geometry: {
-                  type: 'Point',
-                  coordinates: kycLocation.coordinates,
-                },
-                $maxDistance: maxDistanceMeters,
+              $geoWithin: {
+                $centerSphere: [kycLocation.coordinates, radiusInRadians],
               },
             },
           },

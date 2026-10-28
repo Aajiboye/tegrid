@@ -55,7 +55,6 @@ export class BaseKycService extends BaseAuthService implements IBaseKyc {
     async completeProfile(user: HomeOwner|TradePerson, profileData: ProfileCreationDto | TradePersonProfileCreationDto): Promise<ProfileDto> {
         const userRepo = this.getUserRepoForUser(user);
         const userData = await userRepo.findOne({ _id: user._id });
-        console.log('userData:', userData);
         if (userData && userData.phoneNumber) profileData.phoneNumber = userData.phoneNumber;
         await this.isPhoneNumberVerified(userData);
 

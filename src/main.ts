@@ -1,5 +1,13 @@
-// Ensure module-alias is registered early so runtime path aliases like `src/...` resolve in compiled code
-import 'module-alias/register';
+// `tsc` does not rewrite the `src/*` path alias, so the compiled output in `dist` needs
+// module-alias to resolve imports written as `src/...` at runtime. In development we run through
+// ts-node, where `tsconfig-paths/register` already maps `src/*` to the TypeScript sources; if
+// module-alias were registered there too it would load duplicate compiled copies from `dist`
+// (e.g. two different `JobTypeRepository` classes), which breaks Nest dependency injection.
+// So only register it when executing the compiled `.js` output.
+if (__filename.endsWith('.js')) {
+  require('module-alias/register');
+}
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';

@@ -1,0 +1,739 @@
+{
+  "info": {
+    "_postman_id": "tegrid-admin-apis-001",
+    "name": "TradeExpertGrid - Admin APIs",
+    "description": "Admin-focused API collection for TradeExpertGrid (Auth, Dashboard, KYC moderation, Quotation moderation, and payment release).\n\nConventions:\n- Base path includes `/v1`.\n- Success responses are wrapped as `{ \"message\": string, \"data\": <payload> }`.\n- Most list endpoints support pagination via `page` and `size`.\n- Run top-to-bottom for best variable capture.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Admin Auth",
+      "item": [
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@tradeexpertgrid.com\",\n  \"password\": \"Password@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Logs in admin and stores bearer token into {{adminToken}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.token) {",
+                  "  pm.collectionVariables.set('adminToken', jsonData.data.token);",
+                  "}",
+                  "pm.test('Admin login succeeded', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Invite Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inviterId\": \"{{adminId}}\",\n  \"email\": \"new-admin@tradeexpertgrid.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/auth/invite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "auth",
+                "invite"
+              ]
+            },
+            "description": "Invites another admin. Note: this endpoint currently uses inviterId in request body."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1. Admin Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Overview",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/dashboard/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "dashboard",
+                "overview"
+              ]
+            },
+            "description": "Returns top-level admin metrics and live activity feed."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pending/Unapproved KYC Submissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/dashboard/kyc-submissions?userType=ALL&status=UNAPPROVED&page=1&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "dashboard",
+                "kyc-submissions"
+              ],
+              "query": [
+                {
+                  "key": "userType",
+                  "value": "ALL"
+                },
+                {
+                  "key": "status",
+                  "value": "UNAPPROVED"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "UserType values: ALL | HOME_OWNER | TRADES_PERSON. Status values: PENDING | REJECTED | UNAPPROVED."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "var rows = jsonData.data && jsonData.data.data ? jsonData.data.data : [];",
+                  "if (rows.length > 0) {",
+                  "  var first = rows[0];",
+                  "  if (first.userType === 'TRADES_PERSON') { pm.collectionVariables.set('tradePersonKycUserId', first.userId); }",
+                  "  if (first.userType === 'HOME_OWNER') { pm.collectionVariables.set('homeOwnerKycUserId', first.userId); }",
+                  "}",
+                  "pm.test('KYC submissions request succeeded', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get Verified Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/dashboard/verified-users?userType=ALL&page=1&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "dashboard",
+                "verified-users"
+              ],
+              "query": [
+                {
+                  "key": "userType",
+                  "value": "ALL"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Admin KYC Moderation",
+      "item": [
+        {
+          "name": "Approve Trade Person KYC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/kyc/trade-person/{{tradePersonKycUserId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "kyc",
+                "trade-person",
+                "{{tradePersonKycUserId}}",
+                "approve"
+              ]
+            },
+            "description": "Approves KYC for trade person by user id."
+          },
+          "response": []
+        },
+        {
+          "name": "Reject Trade Person KYC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Invalid document upload\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/kyc/trade-person/{{tradePersonKycUserId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "kyc",
+                "trade-person",
+                "{{tradePersonKycUserId}}",
+                "reject"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Home Owner KYC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/kyc/home-owner/{{homeOwnerKycUserId}}/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "kyc",
+                "home-owner",
+                "{{homeOwnerKycUserId}}",
+                "approve"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reject Home Owner KYC",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Address proof mismatch\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/kyc/home-owner/{{homeOwnerKycUserId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "kyc",
+                "home-owner",
+                "{{homeOwnerKycUserId}}",
+                "reject"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Admin Quotations",
+      "item": [
+        {
+          "name": "List Quotations for Job",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{jobRequestId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "quotations",
+                "{{jobRequestId}}"
+              ]
+            },
+            "description": "Provide `{{jobRequestId}}` from your job flow run."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "var rows = jsonData.data || [];",
+                  "if (rows.length > 0) {",
+                  "  if (rows[0]._id) pm.collectionVariables.set('quotationId', rows[0]._id);",
+                  "  if (rows[0].tradePerson && rows[0].tradePerson._id) pm.collectionVariables.set('tradePersonId', rows[0].tradePerson._id);",
+                  "}",
+                  "pm.test('Quotations listed', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Move Quotation to Admin Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/review",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "quotations",
+                "{{quotationId}}",
+                "review"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Review Decision: Approve Quotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ADMIN_APPROVED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/review-decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "quotations",
+                "{{quotationId}}",
+                "review-decision"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Review Decision: Reject Quotation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ADMIN_REJECTED\",\n  \"reason\": \"Estimate exceeds approved budget\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/review-decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "quotations",
+                "{{quotationId}}",
+                "review-decision"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Quotation Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "quotations",
+                "{{quotationId}}",
+                "events"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Quotation Revisions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/revisions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "quotations",
+                "{{quotationId}}",
+                "revisions"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Release Initial Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"releaseType\": \"INITIAL\",\n  \"reason\": \"Initial milestone verified\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/release-payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "quotations",
+                "{{quotationId}}",
+                "release-payment"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Release Balance Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"releaseType\": \"BALANCE\",\n  \"reason\": \"Final delivery confirmed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/{{quotationId}}/release-payment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "quotations",
+                "{{quotationId}}",
+                "release-payment"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve QA for Job",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/quotations/jobs/{{jobRequestId}}/approve-qa",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "quotations",
+                "jobs",
+                "{{jobRequestId}}",
+                "approve-qa"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "adminId",
+      "value": ""
+    },
+    {
+      "key": "jobRequestId",
+      "value": ""
+    },
+    {
+      "key": "quotationId",
+      "value": ""
+    },
+    {
+      "key": "tradePersonId",
+      "value": ""
+    },
+    {
+      "key": "tradePersonKycUserId",
+      "value": ""
+    },
+    {
+      "key": "homeOwnerKycUserId",
+      "value": ""
+    }
+  ]
+}

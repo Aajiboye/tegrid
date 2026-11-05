@@ -44,6 +44,9 @@ export class CurrencyService {
       if (found) return { amount: Number(found.amount), currency: String(found.currencyCode).toUpperCase() };
     }
     // fallback to product.minPrice/currency
-    return { amount: Number(product.minPrice ?? 0), currency: (product.currency || 'USD').toUpperCase() };
+    return {
+      amount: Number(product.minPrice ?? 0),
+      currency: (product.currency || this.baseCurrency).toUpperCase(),
+    };
   }
 }

@@ -214,12 +214,14 @@ export class JobRequestQuotationService {
 
     await this.assertJobAllowsNewQuotations(jobRequestId);
 
-    const existing = await this.quotationRepo.findOne({
-      jobRequest: new Types.ObjectId(jobRequestId),
-      tradePerson: new Types.ObjectId(tradePersonId),
-    });
+    const blockingQuotation = await this.quotationRepo.findBlockingSubmissionByJobRequestId(jobRequestId);
+    if (blockingQuotation && blockingQuotation.tradePerson?.toString() !== tradePersonId) {
+      throw new BadRequestException(
+        'A quotation has already been submitted by another tradesperson for this job. New quotations are allowed only after admin/homeowner rejection.',
+      );
+    }
 
-    if (existing) throw new BadRequestException('You have already submitted a quotation for this job request');
+    if (blockingQuotation) throw new BadRequestException('You have already submitted a quotation for this job request');
 
     const quoteId = await this.generateQuoteId();
     const totalAmount = this.calculateTotalAmount(dto);
@@ -242,6 +244,10 @@ export class JobRequestQuotationService {
       eventType: 'QUOTE_SUBMITTED',
       notes: 'Tradesperson submitted a quotation',
       metadata: { totalAmount },
+    });
+
+    await this.jobRequestRepo.update(jobRequestId, {
+      status: JobStatus.QUOTATION_SUBMITTED,
     });
 
     return this.mapToDto(doc);

@@ -43,6 +43,7 @@ export class JobsService {
       createdBy: it.createdBy,
       tradespersonId: it.tradespersonId ? it.tradespersonId.toString() : undefined,
       createdAt: it.createdAt ? new Date(it.createdAt).toISOString() : undefined,
+      status: it.status,
     };
   }
 

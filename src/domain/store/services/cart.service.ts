@@ -150,8 +150,7 @@ export class CartService {
     if (!item || (item.cart as any).toString() !== cart._id!.toString()) {
       throw new NotFoundException('Cart item not found');
     }
-
-    const product = await this.productRepo.findByIdRaw((item.product as any).toString());
+    const product = await this.productRepo.findByIdRaw((item.product?._id as any).toString());
     if (!product) {
       throw new NotFoundException('Product not found');
     }
@@ -258,7 +257,7 @@ export class CartService {
   }
 
   async releaseCartItemStock(item: CartItem): Promise<void> {
-    const productId = (item.product as any).toString();
+    const productId = item.product?._id.toString();
     if (item.type === ProductType.PURCHASE) {
       await this.productRepo.atomicReleasePurchase(productId, item.quantity);
     } else {

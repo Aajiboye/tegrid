@@ -8,6 +8,7 @@ export enum JobVisibility {
 
 export enum JobStatus {
   OPEN = 'OPEN',
+  QUOTATION_SUBMITTED = 'QUOTATION_SUBMITTED',
   QUOTATION_PAID = 'QUOTATION_PAID',
   COMPLETED = 'COMPLETED',
 }

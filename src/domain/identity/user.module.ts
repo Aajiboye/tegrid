@@ -53,6 +53,14 @@ import { CompetencyTest, CompetencyTestSchema } from '../competency-assessment/m
 import { CompetencyTestRepository } from '../competency-assessment/repositories/competency-test.repo';
 import { AdminKycController } from './controllers/admin-kyc.controller';
 import { TradePersonListingController } from './controllers/trade-person-listing.controller';
+import { AdminDashboardController } from './controllers/admin-dashboard.controller';
+import { AdminDashboardService } from './services/admin-dashboard.service';
+import { JobRequest, JobRequestSchema } from '../jobs/models/job-request.model';
+import { JobRequestQuotation, JobRequestQuotationSchema } from '../jobs/models/job-request-quotation.model';
+import { JobRequestQuotationEvent, JobRequestQuotationEventSchema } from '../jobs/models/job-request-quotation-event.model';
+import { Payment, PaymentSchema } from '../jobs/models/payment.model';
+import { RentalReservation, RentalReservationSchema } from '../store/models/rental-reservation.model';
+import { StorePayment, StorePaymentSchema } from '../store/models/store-payment.model';
 
 
 @Module({
@@ -68,7 +76,13 @@ import { TradePersonListingController } from './controllers/trade-person-listing
       { name: TradePersonKycProfile.name, schema: TradePersonKycProfileSchema },
   { name: TradePersonProfile.name, schema: TradePersonProfileSchema },
   { name: JobType.name, schema: JobTypeSchema },
-  { name: CompetencyTest.name, schema: CompetencyTestSchema }
+      { name: CompetencyTest.name, schema: CompetencyTestSchema },
+      { name: JobRequest.name, schema: JobRequestSchema },
+      { name: JobRequestQuotation.name, schema: JobRequestQuotationSchema },
+      { name: JobRequestQuotationEvent.name, schema: JobRequestQuotationEventSchema },
+      { name: Payment.name, schema: PaymentSchema },
+      { name: RentalReservation.name, schema: RentalReservationSchema },
+      { name: StorePayment.name, schema: StorePaymentSchema },
 
     ]),
     AuditModule,
@@ -106,6 +120,7 @@ import { TradePersonListingController } from './controllers/trade-person-listing
     TradePersonProfileRepository,
     TradePersonProfileService,
     CompetencyTestRepository,
+    AdminDashboardService,
     {
       provide: IDENTITY_VERIFIER,
       useClass: VerifyMeProvider,
@@ -120,6 +135,7 @@ import { TradePersonListingController } from './controllers/trade-person-listing
     TradePersonListingController,
     AdminAuthController,
     AdminKycController,
+    AdminDashboardController,
     (require('./controllers/trade-person-auth.controller').TradePersonAuthController),
   ],
   exports: [

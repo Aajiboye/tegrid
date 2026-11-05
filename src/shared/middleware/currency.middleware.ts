@@ -16,9 +16,21 @@ declare global {
 
 @Injectable()
 export class CurrencyMiddleware implements NestMiddleware {
-  use(req: Request, _res: Response, next: NextFunction) {
+  use(req: Request, res: Response, next: NextFunction) {
     const explicitCurrency = String(req.header('x-user-currency') || '').trim();
     const location = String(req.header('x-user-location') || '').trim();
+
+    const path = req.path || '';
+    const requiresStrictCurrencyContext =
+      path.startsWith('/v1/store/cart') || path.startsWith('/v1/store/checkout');
+
+    if (requiresStrictCurrencyContext && !explicitCurrency && !location) {
+      return res.status(400).json({
+        message:
+          'Currency context is required for cart/checkout. Provide x-user-currency or x-user-location header.',
+        data: null,
+      });
+    }
 
     let country: string | undefined;
     let locale: string | undefined;
@@ -36,7 +48,7 @@ export class CurrencyMiddleware implements NestMiddleware {
     if (!currency) {
       if (country) currency = mapCountryToCurrency(country);
     }
-    if (!currency) currency = 'USD';
+    if (!currency) currency = 'NGN';
 
     req.currencyContext = { country, locale, currency };
     next();

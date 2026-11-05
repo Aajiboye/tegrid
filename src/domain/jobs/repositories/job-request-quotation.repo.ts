@@ -31,6 +31,15 @@ export class JobRequestQuotationRepository {
     return this.model.find({ jobRequest: new Types.ObjectId(jobRequestId) }).lean();
   }
 
+  async findBlockingSubmissionByJobRequestId(jobRequestId: string): Promise<JobRequestQuotation | null> {
+    return this.model
+      .findOne({
+        jobRequest: new Types.ObjectId(jobRequestId),
+        reviewStatus: { $nin: ['ADMIN_REJECTED', 'HOMEOWNER_REJECTED'] },
+      })
+      .lean();
+  }
+
   async findAdminApprovedByJobRequestId(jobRequestId: string): Promise<JobRequestQuotation | null> {
     return this.model
       .findOne({

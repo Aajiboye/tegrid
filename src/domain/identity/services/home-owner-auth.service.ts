@@ -242,7 +242,7 @@ export class AuthService extends BaseAuthService implements IAuth {
   async requestEmailVerificationOtp(identifier: string): Promise<void> {
     const email = this.emailUtil.normalizeEmail(identifier);
     const user = await this.userRepo.findOne({ email });
-    if (user) throw new DuplicateUserError("User with the same email already exists");
+    if (user && user.isVerified) throw new DuplicateUserError("User email is already verified");
 
     const otp = await this.requestOtp(email, 'ONBOARDING');
     this.eventEmitter.emit('Send.NewUser', {
@@ -257,7 +257,7 @@ export class AuthService extends BaseAuthService implements IAuth {
     async requestPhoneNumberVerificationOtp(phoneNumber: string): Promise<void> {
     const phone = this.phoneUtil.normalizePhone(phoneNumber);
     const user = await this.userRepo.findOne({ phoneNumber: phone });
-    if (user) throw new DuplicateUserError('User with the same phone number already exists');
+    if (user && user.isVerified) throw new DuplicateUserError("User phone number is already verified");
 
     const otp = await this.requestOtp(phone, 'ONBOARDING');
 

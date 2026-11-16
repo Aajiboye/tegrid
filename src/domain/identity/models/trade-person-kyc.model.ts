@@ -3,6 +3,27 @@ import { Types } from 'mongoose';
 import { TradePerson } from './trade-person-user.model';
 import { BankAccounts } from '../dtos/kyc.dto';
 
+@Schema({ _id: false })
+export class ServiceArea {
+    @Prop({ type: String, required: true })
+    address: string;
+
+    @Prop({
+        type: {
+            type: String,
+            enum: ['Point'],
+            required: true,
+        },
+        coordinates: { type: [Number], required: true },
+    })
+    location: {
+        type: 'Point';
+        coordinates: [number, number];
+    };
+}
+
+export const ServiceAreaSchema = SchemaFactory.createForClass(ServiceArea);
+
 @Schema()
 export class TradePersonKycProfile {
     _id?: Types.ObjectId;
@@ -56,6 +77,9 @@ export class TradePersonKycProfile {
         coordinates: [number, number];
     };
 
+    @Prop({ type: [ServiceAreaSchema], default: [] })
+    serviceAreas?: ServiceArea[];
+
     @Prop({ type: String})
     healthAndSafetyCertificateUrl?: string;
 
@@ -92,3 +116,4 @@ export const TradePersonKycProfileSchema = SchemaFactory.createForClass(TradePer
 
 TradePersonKycProfileSchema.set('timestamps', true);
 TradePersonKycProfileSchema.index({ location: '2dsphere' });
+TradePersonKycProfileSchema.index({ 'serviceAreas.location': '2dsphere' });

@@ -6,7 +6,7 @@ import { TokenRepository } from '../repositories/token.repo';
 import { PasswordUtilService } from '../../../shared/utils/password.util';
 import { OTPUtilService } from '../../../shared/utils/otp.utils';
 import { ConfigService } from '@nestjs/config';
-import { BankDetailsDto, HealthAndSafetyComplianceDto, PoliceCharacterReportDto, TradePersonIdentityVerificationDto, TradePersonKycStatusResponse, TradePersonProfileDto } from '../dtos/tradeperson.kyc.dto';
+import { BankDetailsDto, HealthAndSafetyComplianceDto, PoliceCharacterReportDto, ServiceAreaDto, TradePersonIdentityVerificationDto, TradePersonKycStatusResponse, TradePersonProfileDto } from '../dtos/tradeperson.kyc.dto';
 import { BaseAuthService } from './base.auth.service';
 import mongoose from 'mongoose';
 import { CryptoService } from '../../../shared/services/crypto.service';
@@ -47,6 +47,7 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
             dob: profile.dob,
             homeAddress: profile.homeAddress,
             location: profile.location,
+            serviceAreas: profile.serviceAreas || [],
             healthAndSafetyCertificateUrl: profile.healthAndSafetyCertificateUrl,
             healthAndSafetyCertificateExpiryDate: profile.healthAndSafetyCertificateExpiryDate,
             healthAndSafetyCertificateIssueDate: profile.healthAndSafetyCertificateIssueDate,
@@ -163,6 +164,7 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
         address: string,
         addressProofUrl: string,
         location?: { type: 'Point'; coordinates: [number, number] },
+        serviceAreas?: ServiceAreaDto[],
     ): Promise<TradePersonProfileDto> {
         const profile: any = { address, addressProofUrl, homeAddress: address };
         if (location?.coordinates?.length === 2) {
@@ -170,6 +172,18 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
                 type: 'Point',
                 coordinates: location.coordinates,
             };
+        }
+
+        if (Array.isArray(serviceAreas)) {
+            profile.serviceAreas = serviceAreas
+                .filter((area) => area?.address && area?.location?.coordinates?.length === 2)
+                .map((area) => ({
+                    address: area.address,
+                    location: {
+                        type: 'Point',
+                        coordinates: area.location.coordinates,
+                    },
+                }));
         }
 
         const saved = await this.tradePersonKycRepo.updateWithUpsert({ user: new mongoose.Types.ObjectId(user._id) }, profile);

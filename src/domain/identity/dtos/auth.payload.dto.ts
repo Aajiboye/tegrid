@@ -56,9 +56,10 @@ export class UserSignUpPayLoad {
     coordinates: [number, number];
   };
 
+  @IsOptional()
   @IsString()
   @ApiPropertyOptional({example: "22, Alfred Awen Avn, Ikeja"})
-  locationAddress?: String;
+  locationAddress?: string;
 }
 
 export class VendorSignUpPayLoad {

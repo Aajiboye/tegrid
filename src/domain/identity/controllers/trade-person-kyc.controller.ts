@@ -91,8 +91,14 @@ export class TradePersonKycController {
     @ApiOperation({ summary: 'Complete TradePerson Address Verification' })
     @ApiResponse({ description: 'Address verified', type: TradePersonProfileDto })
     async completeAddressVerification(@user() user: TradePerson, @Body() payload: TradePersonAddressVerificationDto) {
-        const { address, addressProofUrl, location } = payload;
-        const res = await this.tradePersonKycService.completeAddressVerification(user, address, addressProofUrl, location);
+        const { address, addressProofUrl, location, serviceAreas } = payload;
+        const res = await this.tradePersonKycService.completeAddressVerification(
+            user,
+            address,
+            addressProofUrl,
+            location,
+            serviceAreas,
+        );
         return adaptResponse(res, "Address verification completed successfully");
     }
 

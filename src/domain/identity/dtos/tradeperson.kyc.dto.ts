@@ -1,6 +1,27 @@
 import { IsOptional, IsString, IsUrl } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+export class ServiceAreaLocationDto {
+  @ApiProperty({ example: 'Point', enum: ['Point'] })
+  type: 'Point';
+
+  @ApiProperty({
+    type: [Number],
+    example: [3.3792, 6.5244],
+    description: 'GeoJSON coordinates as [longitude, latitude]',
+  })
+  coordinates: [number, number];
+}
+
+export class ServiceAreaDto {
+  @IsString()
+  @ApiProperty({ example: 'Ikeja, Lagos' })
+  address: string;
+
+  @ApiProperty({ type: ServiceAreaLocationDto })
+  location: ServiceAreaLocationDto;
+}
+
 export class TradePersonProfileDto {
   _id: string;
   @ApiProperty()
@@ -26,6 +47,12 @@ export class TradePersonProfileDto {
     type: 'Point';
     coordinates: [number, number];
   };
+
+  @ApiPropertyOptional({
+    type: [ServiceAreaDto],
+    description: 'Additional business/service areas for job discovery',
+  })
+  serviceAreas?: ServiceAreaDto[];
 
   @ApiPropertyOptional()
   healthAndSafetyCertificateUrl?: string;
@@ -122,6 +149,13 @@ export class TradePersonAddressVerificationDto {
     type: 'Point';
     coordinates: [number, number];
   };
+
+  @IsOptional()
+  @ApiPropertyOptional({
+    type: [ServiceAreaDto],
+    description: 'Additional business/service areas for job discovery',
+  })
+  serviceAreas?: ServiceAreaDto[];
 }
 
 export class TradePersonKycRejectionDto {

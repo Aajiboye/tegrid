@@ -180,38 +180,53 @@ export class JobsService {
     const query: any = {};
     if (search) query['title'] = { $regex: search, $options: 'i' };
     if (user.userType === UserType.TRADESPERSON) {
-      const visibilityFilter = {
-        $or: [
-          { visibility: 'PUBLIC' },
-          { visibility: 'PRIVATE', tradespersonId: new Types.ObjectId(user._id) },
-        ],
+      const privateAssignedFilter = {
+        visibility: 'PRIVATE',
+        tradespersonId: new Types.ObjectId(user._id),
       };
 
       let kycLocation: { type: 'Point'; coordinates: [number, number] } | null = null;
+      let additionalServiceAreas: { type: 'Point'; coordinates: [number, number] }[] = [];
       try {
         const kycProfile = await this.tradePersonKycService.getKycProfile(user as any);
         kycLocation = kycProfile?.location || null;
+        additionalServiceAreas = (kycProfile?.serviceAreas || [])
+          .map((area: any) => area?.location)
+          .filter((loc: any) => loc?.coordinates?.length === 2);
       } catch {
         kycLocation = null;
+        additionalServiceAreas = [];
       }
 
-      if (kycLocation?.coordinates?.length === 2) {
+      const allServiceLocations = [
+        ...(kycLocation?.coordinates?.length === 2 ? [kycLocation] : []),
+        ...additionalServiceAreas,
+      ];
+
+      if (allServiceLocations.length > 0) {
         const radiusKm = this.configService.get<number>('serviceRadiusKm') || 10;
         const maxDistanceMeters = radiusKm * 1000;
         const earthRadiusMeters = 6378100;
         const radiusInRadians = maxDistanceMeters / earthRadiusMeters;
-        query['$and'] = [
-          {
-            location: {
-              $geoWithin: {
-                $centerSphere: [kycLocation.coordinates, radiusInRadians],
-              },
+
+        const publicGeoFilters = allServiceLocations.map((loc) => ({
+          location: {
+            $geoWithin: {
+              $centerSphere: [loc.coordinates, radiusInRadians],
             },
           },
-          visibilityFilter,
+        }));
+
+        query['$or'] = [
+          privateAssignedFilter,
+          {
+            visibility: 'PUBLIC',
+            $or: publicGeoFilters,
+          },
         ];
       } else {
-        query['$or'] = visibilityFilter.$or;
+        // If no service location is configured, tradesperson should only see jobs explicitly assigned to them.
+        query['$or'] = [privateAssignedFilter];
       }
     } else {
       query['visibility'] = 'PUBLIC';

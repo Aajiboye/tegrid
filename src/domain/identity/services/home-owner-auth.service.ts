@@ -257,7 +257,7 @@ export class AuthService extends BaseAuthService implements IAuth {
     async requestPhoneNumberVerificationOtp(phoneNumber: string): Promise<void> {
     const phone = this.phoneUtil.normalizePhone(phoneNumber);
     const user = await this.userRepo.findOne({ phoneNumber: phone });
-    if (user && user.isVerified) throw new DuplicateUserError("User email is already verified");
+    if (user && user.isVerified) throw new DuplicateUserError("User phone number is already verified");
 
     const otp = await this.requestOtp(phone, 'ONBOARDING');
 

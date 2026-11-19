@@ -46,6 +46,7 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
             addressProofUrl: profile.addressProofUrl,
             dob: profile.dob,
             homeAddress: profile.homeAddress,
+            tradeAddress: profile.tradeAddress,
             location: profile.location,
             serviceAreas: profile.serviceAreas || [],
             healthAndSafetyCertificateUrl: profile.healthAndSafetyCertificateUrl,
@@ -71,7 +72,7 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
     async getKycStatus(user: TradePerson): Promise<TradePersonKycStatusResponse> {
         const profile = await this.tradePersonKycRepo.findOne({ user: new mongoose.Types.ObjectId(user._id) }) || {};
         const profileItemsList = ["firstName", "lastName", "phoneNumber", "pinHash"];
-        const personalInfoList = ["homeAddress"];
+        const personalInfoList = ["homeAddress", "dob"];
         const identityItemsList = ["identityType", "identityData", "photoIdUrl", "addressProofUrl"];
         const healthAndSafetyComplianceItemsList = ["healthAndSafetyCertificateUrl", "healthAndSafetyCertificateExpiryDate", "healthAndSafetyCertificateIssueDate"];
         const policeCharacterReportItemsList = ["policeCharacterReportUrl"];
@@ -166,7 +167,7 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
         location?: { type: 'Point'; coordinates: [number, number] },
         serviceAreas?: ServiceAreaDto[],
     ): Promise<TradePersonProfileDto> {
-        const profile: any = { address, addressProofUrl, homeAddress: address };
+        const profile: any = { address, addressProofUrl, tradeAddress: address };
         if (location?.coordinates?.length === 2) {
             profile.location = {
                 type: 'Point',

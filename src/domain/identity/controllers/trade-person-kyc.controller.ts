@@ -22,6 +22,7 @@ import {
     PoliceCharacterReportDto,
     BankDetailsDto,
     TradePersonAddressVerificationDto,
+    PersonalInformationDto,
 } from '../dtos/tradeperson.kyc.dto';
 import { TradePerson } from '../models/trade-person-user.model';
 
@@ -148,5 +149,14 @@ export class TradePersonKycController {
     async deleteBankDetails(@user() user: TradePerson, @Param('accountNumber') accountNumber: string, @Param('bankCode') bankCode: string) {
         const res = await this.tradePersonKycService.deleteBankAccount(user, accountNumber);
         return adaptResponse(res, "Bank details deleted successfully");
+    }
+
+    @Post('/complete-personal-information')
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Complete TradePerson Personal Information' })
+    @ApiResponse({ description: 'Personal information completed', type: TradePersonProfileDto })
+    async completePersonalInformation(@user() user: TradePerson, @Body() payload: PersonalInformationDto) {
+        const res = await this.tradePersonKycService.completePersonalInformation(user, payload);
+        return adaptResponse(res, "Personal information completed successfully");
     }
 }

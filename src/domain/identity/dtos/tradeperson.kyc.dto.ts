@@ -41,6 +41,8 @@ export class TradePersonProfileDto {
   dob?: string;
   @ApiPropertyOptional()
   homeAddress?: string;
+  @ApiPropertyOptional()
+  tradeAddress?: string;
 
   @ApiPropertyOptional()
   location?: {

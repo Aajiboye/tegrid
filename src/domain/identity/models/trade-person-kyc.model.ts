@@ -65,6 +65,9 @@ export class TradePersonKycProfile {
     @Prop()
     homeAddress?: string;
 
+    @Prop()
+    tradeAddress?: string;
+
     @Prop({
         type: {
             type: String,

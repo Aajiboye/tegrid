@@ -71,12 +71,12 @@ export class TradePersonKycService extends BaseAuthService implements ITradePers
     async getKycStatus(user: TradePerson): Promise<TradePersonKycStatusResponse> {
         const profile = await this.tradePersonKycRepo.findOne({ user: new mongoose.Types.ObjectId(user._id) }) || {};
         const profileItemsList = ["firstName", "lastName", "phoneNumber", "pinHash"];
-        const personalInfoList = ["dob", "homeAddress"];
+        const personalInfoList = ["homeAddress"];
         const identityItemsList = ["identityType", "identityData", "photoIdUrl", "addressProofUrl"];
-        const healthAndSafetyComplianceItemsList = ["certificateUrl", "issuedDate", "expiryDate"];
+        const healthAndSafetyComplianceItemsList = ["healthAndSafetyCertificateUrl", "healthAndSafetyCertificateExpiryDate", "healthAndSafetyCertificateIssueDate"];
         const policeCharacterReportItemsList = ["policeCharacterReportUrl"];
         const bankDetailsItemsList = ["bankAccounts"];
-        const mainTradeItemsList = ["mainTrade"];
+        const mainTradeItemsList = ["mainTradeCategory"];
         return {
             profileCompleted: profileItemsList.every(item => !!profile[item]),
             personalInformationCompleted: personalInfoList.every(item => !!profile[item]),

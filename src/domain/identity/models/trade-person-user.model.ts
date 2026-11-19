@@ -1,6 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
-import { HomeOwner } from './home-owner-user.model';
 import { UserType } from '../enums/user-types.enum';
 import { Role } from '../enums/roles.enum';
 import { JobType } from 'src/domain/jobs/models/job-type.model';

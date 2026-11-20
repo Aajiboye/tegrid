@@ -37,6 +37,10 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { AdminQuotationController } from './controllers/admin-quotation.controller';
 import { HomeOwnerQuotationController } from './controllers/home-owner-quotation.controller';
 import { TradePersonContractController } from './controllers/trade-person-contract.controller';
+import { TradePersonReportingController } from './controllers/trade-person-reporting.controller';
+import { TradePersonReportingService } from './services/trade-person-reporting.service';
+import { HomeOwnerReportingController } from './controllers/home-owner-reporting.controller';
+import { HomeOwnerReportingService } from './services/home-owner-reporting.service';
 
 @Module({
     imports: [
@@ -72,6 +76,8 @@ import { TradePersonContractController } from './controllers/trade-person-contra
         ReleaseRepository,
         ReviewRepository,
         JobRequestQuotationService,
+        TradePersonReportingService,
+        HomeOwnerReportingService,
     ],
     controllers: [
         JobsController,
@@ -82,6 +88,8 @@ import { TradePersonContractController } from './controllers/trade-person-contra
         TradePersonContractController,
         PaymentController,
         ReviewsController,
+        TradePersonReportingController,
+        HomeOwnerReportingController,
     ],
     exports: [JobsService, JobTypeRepository],
 })
